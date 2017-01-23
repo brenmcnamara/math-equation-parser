@@ -1,0 +1,36 @@
+{
+  "name": "equation-parser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "lint": "esw webpack.config.* src --color",
+    "lint-watch": "npm run lint -- --watch",
+    "test": "jest",
+    "test-watch": "npm run test -- --watch"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-core": "^6.21.0",
+    "babel-eslint": "^7.1.1",
+    "babel-jest": "^18.0.0",
+    "babel-loader": "^6.2.10",
+    "babel-preset-latest": "^6.16.0",
+    "babel-register": "^6.18.0",
+    "eslint": "^3.13.0",
+    "eslint-loader": "^1.6.1",
+    "eslint-plugin-flowtype": "^2.29.2",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jest": "^1.0.2",
+    "eslint-watch": "^2.1.14",
+    "flow-bin": "^0.37.4",
+    "jest": "^18.1.0",
+    "webpack": "^1.14.0"
+  },
+  "dependencies": {
+    "assert": "^1.4.1"
+  }
+}
