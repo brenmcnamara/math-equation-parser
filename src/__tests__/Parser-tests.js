@@ -1,9 +1,21 @@
 
 import Parser from '../Parser';
 
+import assert from 'assert';
+
 function Literal(value) { return {type: 'Literal', name: 'Literal', value}; }
 
 function Symbol(symbol) { return {type: 'Symbol', name: 'Symbol', symbol}; }
+
+function AssertionError(message) {
+  return new assert.AssertionError({
+    actual: false,
+    expected: true,
+    message,
+    operation: '==',
+    stackStartFunction: assert.ok,
+  });
+}
 
 describe('Parser', () => {
 
@@ -161,6 +173,12 @@ describe('Parser', () => {
       },
       right: Literal(3),
     });
+
+  });
+
+  it('throws an error when a binary operation is used incorrectly', () => {
+
+    expect(() => Parser.parse('1 *')).toThrow();
 
   });
 

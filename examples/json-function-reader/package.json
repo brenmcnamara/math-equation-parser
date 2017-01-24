@@ -1,0 +1,29 @@
+{
+  "name": "json-function-reader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "webpack.config.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "build-watch": "npm run build -- --watch",
+    "link-equation-parser": "sudo npm link ../..",
+    "start": "npm-run-all --parallel build-watch start-server",
+    "start-server": "http-server ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http-server": "^0.9.0",
+    "json-pretty": "^0.0.1",
+    "npm-run-all": "^4.0.1"
+  },
+  "devDependencies": {
+    "babel": "^6.5.2",
+    "babel-cli": "^6.22.2",
+    "babel-core": "^6.22.1",
+    "babel-loader": "^6.2.10",
+    "babel-preset-latest": "^6.22.0",
+    "babel-register": "^6.22.0",
+    "webpack": "^1.14.0"
+  }
+}

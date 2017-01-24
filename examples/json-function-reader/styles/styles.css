@@ -1,0 +1,57 @@
+
+body {
+  bottom: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+#root {
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+#equation-container, #json-container {
+  margin: 8px;
+}
+
+#equation-container {
+  height: 40px;
+  min-height: 40px;
+}
+
+#json-container {
+  background-color: #EEE;
+  border: solid #AAA 1px;
+  border-radius: 3px;
+  flex-grow: 1;
+}
+
+#equation-input {
+  border: none;
+  font-size: 18pt;
+  height: 100%;
+  border: solid #666 1px;
+  text-indent: 8px;
+  width: 100%;
+}
+
+#json-container > pre {
+  font-size: 14pt;
+  margin: 8px;
+}
+
+.parse-error {
+  color: red;
+}
+
+.parse-tree {
+  color: #666;
+}

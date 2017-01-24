@@ -139,9 +139,10 @@ export default class Parser {
               'Binary Operator must have 2 operands',
             );
             operatorStack.pop();
-            const rightOperand = resolvedOperators.pop();
-            const leftOperand = resolvedOperators.pop();
-            const operator = new LastOperator([leftOperand, rightOperand]);
+            const operands = resolvedOperators.splice(-2, 2);
+            console.log(operands);
+            assert(operands.length === 2, `Invalid equation: ${text}`);
+            const operator = new LastOperator(operands);
             resolvedOperators.push(operator);
             LastOperator = operatorStack[operatorStack.length - 1];
           }
@@ -181,15 +182,20 @@ export default class Parser {
         continue;
       }
 
-      assert(false, `Unexpected token: "${textToProcess.charAt(0)}"`);
+      assert(false, `Unexpected token: ${textToProcess.charAt(0)}`);
 
     }
     // Looped through all the text, pop and resolve any operators still
     // on the stack.
     while (operatorStack.length) {
       const Operator = operatorStack.pop();
+      assert(
+        Operator !== '(' && Operator !== 'StartOfFunction',
+        `Invalid equation: ${text}`,
+      );
       const numberOfOperands = Operator.getNumberOfOperands();
       const operands = resolvedOperators.slice(-numberOfOperands);
+      assert(operands.length === numberOfOperands, `Invalid equation: ${text}`);
       resolvedOperators.splice(-numberOfOperands, numberOfOperands);
       resolvedOperators.push(new Operator(operands));
     }
