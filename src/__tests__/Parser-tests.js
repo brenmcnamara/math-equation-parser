@@ -1,21 +1,9 @@
 
 import Parser from '../Parser';
 
-import assert from 'assert';
-
 function Literal(value) { return {type: 'Literal', name: 'Literal', value}; }
 
 function Symbol(symbol) { return {type: 'Symbol', name: 'Symbol', symbol}; }
-
-function AssertionError(message) {
-  return new assert.AssertionError({
-    actual: false,
-    expected: true,
-    message,
-    operation: '==',
-    stackStartFunction: assert.ok,
-  });
-}
 
 describe('Parser', () => {
 
@@ -230,6 +218,111 @@ describe('Parser', () => {
       params: [Literal(1)],
     });
 
+  });
+
+
+  it('configures to only allow certain symbols', () => {
+    const parser = new Parser({validSymbols: ['x', 'y']});
+    expect(() => parser.parse('tan(x + y)')).not.toThrow();
+    expect(() => parser.parse('tan(x + z)')).toThrow();
+  });
+
+
+  describe('implicit multiply', () => {
+
+    it('works between symbol and literal', () => {
+
+      expect(Parser.parse('3x').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Literal(3),
+        right: Symbol('x'),
+      });
+      expect(Parser.parse('x3').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Symbol('x'),
+        right: Literal(3),
+      });
+    });
+
+    it('works between symbol and symbol', () => {
+
+      expect(Parser.parse('xy').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Symbol('x'),
+        right: Symbol('y'),
+      });
+
+    });
+
+    it('works between complex operations', () => {
+
+      expect(Parser.parse('x^2y^2').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: {
+          type: 'BinaryOperator',
+          name: 'Exp',
+          left: Symbol('x'),
+          right: Literal(2),
+        },
+        right: {
+          type: 'BinaryOperator',
+          name: 'Exp',
+          left: Symbol('y'),
+          right: Literal(2),
+        },
+      });
+
+    });
+
+    it('works with parenthesis', () => {
+
+      expect(Parser.parse('(1)(2)').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Literal(1),
+        right: Literal(2),
+      });
+
+      expect(Parser.parse('1(2)').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Literal(1),
+        right: Literal(2),
+      });
+
+      expect(Parser.parse('(1)2').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Literal(1),
+        right: Literal(2),
+      });
+
+    });
+
+    it('works with function operators', () => {
+
+      expect(Parser.parse('xsin(y)').toJSON()).toEqual({
+        type: 'BinaryOperator',
+        name: 'Prod',
+        left: Symbol('x'),
+        right: {
+          type: 'FunctionOperator',
+          name: 'Sine',
+          params: [Symbol('y')],
+        },
+      });
+
+    });
+
+  });
+
+  it('configures to disable implicit multiply', () => {
+    const parser = new Parser({implicitMultiply: false});
+    expect(() => parser.parse('xy')).toThrow();
   });
 
 });
