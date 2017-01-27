@@ -39,6 +39,22 @@ describe('Parser', () => {
 
   });
 
+  it('parses assuming left associativity', () => {
+
+    expect(Parser.parse('1 + 2 + 3').toJSON()).toEqual({
+      type: 'BinaryOperator',
+      name: 'Sum',
+      left: {
+        type: 'BinaryOperator',
+        name: 'Sum',
+        left: Literal(1),
+        right: Literal(2),
+      },
+      right: Literal(3),
+    });
+
+  });
+
   it('parses the multiplication operator', () => {
 
     expect(Parser.parse('2 * 3.1').toJSON()).toEqual({
@@ -323,6 +339,23 @@ describe('Parser', () => {
   it('configures to disable implicit multiply', () => {
     const parser = new Parser({implicitMultiply: false});
     expect(() => parser.parse('xy')).toThrow();
+  });
+
+  it('configures to calculate with right associativity', () => {
+    const parser = new Parser({isLeftAssociative: false});
+
+    expect(parser.parse('1 + 2 + 3').toJSON()).toEqual({
+      type: 'BinaryOperator',
+      name: 'Sum',
+      left: Literal(1),
+      right: {
+        type: 'BinaryOperator',
+        name: 'Sum',
+        left: Literal(2),
+        right: Literal(3),
+      },
+    });
+
   });
 
 });

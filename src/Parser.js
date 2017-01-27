@@ -17,6 +17,8 @@ const DefaultConfig = {
   validSymbols: null,
   // Whether or not to allow implicit multiplication
   implicitMultiply: true,
+  // The associativity of operations with the same precedence.
+  isLeftAssociative: true,
 };
 
 export default class Parser {
@@ -166,7 +168,15 @@ class OperatorProcessor {
       lastOperatorCtor &&
       lastOperatorCtor !== '(' &&
       lastOperatorCtor !== 'StartOfFunction' &&
-      PrecedenceMap[lastOperatorCtor.getPrecedence()] > precedence
+      (
+        // Left Associative
+        (
+          this._config.isLeftAssociative &&
+          PrecedenceMap[lastOperatorCtor.getPrecedence()] >= precedence
+        ) ||
+        // Right Associative
+        (PrecedenceMap[lastOperatorCtor.getPrecedence()] > precedence)
+      )
     ) {
       assert(this._operators.length >= 2, 'Invalid equation');
       this._operatorCtors.pop();
