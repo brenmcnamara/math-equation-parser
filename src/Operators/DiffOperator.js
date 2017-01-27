@@ -7,6 +7,4 @@ export default class DiffOperator extends BinaryOperator {
 
   static getName() { return 'Diff'; }
 
-  static getPrecedence() { return 'LOW'; }
-
 }

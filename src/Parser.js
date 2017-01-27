@@ -8,8 +8,9 @@ import assert from 'assert';
 
 const PrecedenceMap = {
   LOW: 1,
-  MEDIUM: 2,
-  HIGH: 3,
+  NORMAL: 2,
+  MEDIUM: 3,
+  HIGH: 4,
 };
 
 const DefaultConfig = {

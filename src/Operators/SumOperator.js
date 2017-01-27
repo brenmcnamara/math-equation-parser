@@ -7,6 +7,4 @@ export default class SumOperator extends BinaryOperator {
 
   static getName() { return 'Sum'; }
 
-  static getPrecedence() { return 'LOW'; }
-
 }

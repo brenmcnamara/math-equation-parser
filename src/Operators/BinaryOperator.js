@@ -2,9 +2,8 @@
 export default class BinaryOperator {
 
   static getType() { return 'BinaryOperator'; }
-  static getPrecedence() {
-    throw Error('BinaryOperator getPrecedence must be overridden');
-  }
+
+  static getPrecedence() { return 'NORMAL'; }
 
   static getName() {
     throw Error('BinaryOperator getName must be overridden');
