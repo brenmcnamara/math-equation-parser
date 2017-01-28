@@ -43,7 +43,16 @@ console.log(Parser.parse('1 + 2').toJSON());
 - If you want to customize the behavior of your parser, provide a
   config object. If you use the static "parse" method, you will get
   the default behavior.
-
+- *Parser Config*
+  - **isLeftAssociative**: *(default = true)* True if binary operations should be left
+    false is it is right associative
+  - **validSymbols**: *(default = null)* An optional array of acceptable symbols
+    *(aka ['x', 'y'])*. If this is set to null, then all symbols are accepted as
+    valid
+  - **implicitMultiply**: *(default = true)* True if implicit multiplication is allowed
+    *(aka 4x)*, false otherwise.
+    
+  
 #### parse(text: string): SyntaxTree
 - Take some equation literal (aka "1 + 2", "x * 7 + 3") and get back
   a syntax tree for that literal
