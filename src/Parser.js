@@ -288,7 +288,7 @@ class OperatorProcessor {
       );
     }
     assert(this._operators.length === 1, 'Invalid equation');
-    return this._operators[0];
+    return this._operators[0].toJSON();
   }
 
   _maybeImplicitMultiply() {

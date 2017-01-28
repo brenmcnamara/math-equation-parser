@@ -46,7 +46,7 @@ function printTree(tree) {
   const $jsonContainer = document.getElementById('json-container');
   const $pre = document.createElement('pre');
   $pre.className = 'parse-tree';
-  const $treeNode = document.createTextNode(jsonPretty(tree.toJSON()));
+  const $treeNode = document.createTextNode(jsonPretty(tree));
   $pre.appendChild($treeNode);
   $jsonContainer.appendChild($pre);
 }

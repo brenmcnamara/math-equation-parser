@@ -17,14 +17,14 @@ A library for parsing math equations in Javascript.
 ```
 import Parser from 'math-equation-parser';
 
-console.log(Parser.parse('1 + 2').toJSON());
+console.log(Parser.parse('1 + 2'));
 ```
 
 ##### Common JS
 ```
 const Parser = require('math-equation-parser');
 
-console.log(Parser.parse('1 + 2').toJSON());
+console.log(Parser.parse('1 + 2'));
 ```
 
 ##### Printed Value
@@ -45,4 +45,3 @@ console.log(Parser.parse('1 + 2').toJSON());
   }
 }
 ```
-
