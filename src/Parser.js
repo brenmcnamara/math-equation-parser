@@ -1,7 +1,8 @@
 
+import BinaryOperator from './Operators/BinaryOperator';
 import CoreOperators from './Operators/CoreOperators';
+import FunctionOperator from './Operators/FunctionOperator';
 import LiteralOperator from './Operators/LiteralOperator';
-import ProdOperator from './Operators/ProdOperator';
 import SymbolOperator from './Operators/SymbolOperator';
 
 import assert from 'assert';
@@ -30,18 +31,20 @@ export default class Parser {
   }
 
   constructor(config = DefaultConfig) {
-    this._binaryOperators = CoreOperators.Binary.slice();
-    this._functionOperators = CoreOperators.Function.slice();
+    this._binaryPayloads = Object.values(CoreOperators.Binary);
+    this._functionPayloads = Object.values(CoreOperators.Function);
     this._config = Object.assign({}, DefaultConfig, config);
   }
 
-  addBinaryOperator(Operator) {
-    this._binaryOperators.push(Operator);
+  addBinaryOperator(payload) {
+    assert.equal(payload.type, 'BinaryOperator');
+    this._binaryPayloads.push(payload);
     return this;
   }
 
-  addFunctionOperator(Operator) {
-    this._functionOperators.push(Operator);
+  addFunctionOperator(payload) {
+    assert.equal(payload.type, 'FunctionOperator');
+    this._functionPayloads.push(payload);
     return this;
   }
 
@@ -82,11 +85,11 @@ export default class Parser {
 
       // Check if this is a binary operator.
       let isBinaryOperator = false;
-      for (let Operator of this._binaryOperators) {
-        const claimObj = Operator.claimToken(textToProcess);
+      for (let payload of this._binaryPayloads) {
+        const claimObj = BinaryOperator.claimToken(payload, textToProcess);
         if (claimObj.claim.length > 0) {
           isBinaryOperator = true;
-          processor.addBinaryOperatorCtor(Operator);
+          processor.addBinaryPayload(payload);
           textToProcess = claimObj.remainder;
           break;
         }
@@ -95,11 +98,11 @@ export default class Parser {
 
       // Check if this is a function operator
       let isFunctionOperator = false;
-      for (let Operator of this._functionOperators) {
-        const claimObj = Operator.claimToken(textToProcess);
+      for (let payload of this._functionPayloads) {
+        const claimObj = FunctionOperator.claimToken(payload, textToProcess);
         if (claimObj.claim.length > 0) {
           isFunctionOperator = true;
-          processor.addFunctionOperatorCtor(Operator);
+          processor.addFunctionPayload(payload);
           assert(
             claimObj.remainder.charAt(0) === '(', // Paren after function
             'Invalid Equation',
@@ -142,7 +145,7 @@ class OperatorProcessor {
     this._typeAddedLastPass = null;
     this._isDone = false;
     this._operators = [];
-    this._operatorCtors = [];
+    this._operatorPayloads = [];
     this._config = config;
   }
 
@@ -158,48 +161,48 @@ class OperatorProcessor {
     this._addOperator(literal);
   }
 
-  addBinaryOperatorCtor(operatorCtor, implicitMultiply = false) {
+  addBinaryPayload(payload, implicitMultiply = false) {
     if (!implicitMultiply) {
       this._typeAddedCurrentPass = 'BinaryOperator';
       this._maybeImplicitMultiply();
     }
-    const precedence = PrecedenceMap[operatorCtor.getPrecedence()];
-    let lastOperatorCtor = this._operatorCtors[this._operatorCtors.length - 1];
+    const precedence = PrecedenceMap[payload.precedence];
+    let lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
     while (
-      lastOperatorCtor &&
-      lastOperatorCtor !== '(' &&
-      lastOperatorCtor !== 'StartOfFunction' &&
+      lastPayload &&
+      lastPayload !== '(' &&
+      lastPayload !== 'StartOfFunction' &&
       (
         // Left Associative
         (
           this._config.isLeftAssociative &&
-          PrecedenceMap[lastOperatorCtor.getPrecedence()] >= precedence
+          PrecedenceMap[lastPayload.precedence] >= precedence
         ) ||
         // Right Associative
-        (PrecedenceMap[lastOperatorCtor.getPrecedence()] > precedence)
+        (PrecedenceMap[lastPayload.precedence] > precedence)
       )
     ) {
       assert(this._operators.length >= 2, 'Invalid equation');
-      this._operatorCtors.pop();
+      this._operatorPayloads.pop();
       const operands = this._operators.splice(-2, 2);
-      const operator = new lastOperatorCtor(operands);
+      const operator = new BinaryOperator(lastPayload, operands);
       this._operators.push(operator);
-      lastOperatorCtor = this._operatorCtors[this._operatorCtors.length - 1];
+      lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
     }
-    this._operatorCtors.push(operatorCtor);
+    this._operatorPayloads.push(payload);
   }
 
-  addFunctionOperatorCtor(operatorCtor) {
+  addFunctionPayload(payload) {
     this._typeAddedCurrentPass = 'FunctionOperator';
     this._maybeImplicitMultiply();
-    this._operatorCtors.push(operatorCtor, 'StartOfFunction');
-    this._remainingFunctionOperands = operatorCtor.getNumberOfOperands();
+    this._operatorPayloads.push(payload, 'StartOfFunction');
+    this._remainingFunctionOperands = _numberOfOperands(payload);
   }
 
   addOpenParens() {
     this._typeAddedCurrentPass = '(';
     this._maybeImplicitMultiply();
-    this._operatorCtors.push('(');
+    this._operatorPayloads.push('(');
   }
 
   addCloseSymbol(commaOrCloseParens) {
@@ -210,25 +213,29 @@ class OperatorProcessor {
       this._remainingFunctionOperands -= 1;
     }
     // Continuously pop until reaching the corresponding parenthesis.
-    let operatorCtor = this._operatorCtors.pop();
+    let operatorPayload = this._operatorPayloads.pop();
     while (
-      operatorCtor &&
-      operatorCtor !== '(' &&
-      operatorCtor !== 'StartOfFunction'
+      operatorPayload &&
+      operatorPayload !== '(' &&
+      operatorPayload !== 'StartOfFunction'
     ) {
-      const numberOfOperands = operatorCtor.getNumberOfOperands();
+      const numberOfOperands = _numberOfOperands(operatorPayload);
       const operands =
         this._operators.splice(-numberOfOperands, numberOfOperands);
-      const operatorName = operatorCtor.getName();
+      const operatorName = operatorPayload.name;
       assert(
         operands.length === numberOfOperands,
         `Operator ${operatorName} needs ${numberOfOperands} operands`,
       );
-      this._operators.push(new operatorCtor(operands));
+      this._operators.push(
+        operatorPayload.type === 'BinaryOperator'
+          ? new BinaryOperator(operatorPayload, operands)
+          : new FunctionOperator(operatorPayload, operands),
+      );
       this._addedOperatorCurrentPass = true;
-      operatorCtor = this._operatorCtors.pop();
+      operatorPayload = this._operatorPayloads.pop();
     }
-    if (operatorCtor === 'StartOfFunction' && !isComma) {
+    if (operatorPayload === 'StartOfFunction' && !isComma) {
       // We processed everything from the start to the end of the function,
       // need to finish off processing this function call.
 
@@ -236,13 +243,9 @@ class OperatorProcessor {
       this._remainingFunctionOperands -= 1;
 
       // StartOfFunction is always preceded by its FunctionOperator
-      const functionOperatorCtor = this._operatorCtors.pop();
-      const numberOfFunctionOperands =
-        functionOperatorCtor.getNumberOfOperands();
-      assert(
-        functionOperatorCtor.getType() === 'FunctionOperator',
-        'Corrupt State: Expected Function Operator',
-      );
+      const functionPayload = this._operatorPayloads.pop();
+      const numberOfFunctionOperands = _numberOfOperands(functionPayload);
+      assert.equal(functionPayload.type, 'FunctionOperator');
       const operands = this._operators.splice(
         -numberOfFunctionOperands,
         numberOfFunctionOperands,
@@ -251,7 +254,7 @@ class OperatorProcessor {
         operands.length === numberOfFunctionOperands,
         'Corrupt state: Not enough elements in resolvedOperators',
       );
-      this._operators.push(new functionOperatorCtor(operands));
+      this._operators.push(new FunctionOperator(functionPayload, operands));
     }
   }
 
@@ -266,19 +269,23 @@ class OperatorProcessor {
   // syntax tree, if there are no errors.
   done() {
     // Loop through, pop, and resolve any operators still left on the stack.
-    while (this._operatorCtors.length > 0) {
-      const operatorCtor = this._operatorCtors.pop();
+    while (this._operatorPayloads.length > 0) {
+      const payload = this._operatorPayloads.pop();
       assert(
-        operatorCtor !== '(' && operatorCtor !== 'StartOfFunction',
+        payload !== '(' && payload !== 'StartOfFunction',
         'Invalid equation',
       );
-      const numberOfOperands = operatorCtor.getNumberOfOperands();
+      const numberOfOperands = _numberOfOperands(payload);
       const operands = this._operators.splice(
         -numberOfOperands,
         numberOfOperands,
       );
-      assert(operands.length === numberOfOperands, 'Invalid equation');
-      this._operators.push(new operatorCtor(operands));
+      assert.equal(operands.length, numberOfOperands);
+      this._operators.push(
+        payload.type === 'BinaryOperator'
+          ? new BinaryOperator(payload, operands)
+          : new FunctionOperator(payload, operands),
+      );
     }
     assert(this._operators.length === 1, 'Invalid equation');
     return this._operators[0];
@@ -302,7 +309,7 @@ class OperatorProcessor {
       leftTypes.indexOf(this._typeAddedLastPass) >= 0 &&
       rightTypes.indexOf(this._typeAddedCurrentPass) >= 0
     ) {
-      this.addBinaryOperatorCtor(ProdOperator, true);
+      this.addBinaryPayload(CoreOperators.Binary.prod, true);
     }
   }
 
@@ -311,4 +318,8 @@ class OperatorProcessor {
     this._addedOperatorCurrentPass = true;
   }
 
+}
+
+function _numberOfOperands(payload) {
+  return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
 }

@@ -3,34 +3,23 @@ export default class FunctionOperator {
 
   static getType() { return 'FunctionOperator'; }
 
-  static claimToken(text) {
-    const symbol = this.getSymbol();
+  static claimToken(payload, text) {
+    const symbol = payload.symbol;
     if (text.startsWith(symbol)) {
       return {claim: symbol, remainder: text.slice(symbol.length)};
     }
     return {claim: '', remainder: text};
   }
 
-  static getSymbol() {
-    throw Error('FunctionOperator subclass must override getSymbol');
-  }
-
-  static getNumberOfOperands() {
-    throw Error('FunctionOperator subclass must override getNumberOfOperands');
-  }
-
-  static getName() {
-    throw Error('FunctionOperator subclass must override getName');
-  }
-
-  constructor(params) {
+  constructor(payload, params) {
     this._params = params;
+    this._payload = payload;
   }
 
   toJSON() {
     return {
-      type: this.constructor.getType(),
-      name: this.constructor.getName(),
+      type: this._payload.type,
+      name: this._payload.name,
       params: this._params.map(p => p.toJSON()),
     };
   }

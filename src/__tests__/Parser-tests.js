@@ -32,7 +32,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('2 - 3').toJSON()).toEqual({
       type: 'BinaryOperator',
-      name: 'Diff',
+      name: 'Difference',
       left: Literal(2),
       right: Literal(3),
     });
@@ -59,7 +59,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('2 * 3.1').toJSON()).toEqual({
       type: 'BinaryOperator',
-      name: 'Prod',
+      name: 'Product',
       left: Literal(2),
       right: Literal(3.1),
     });
@@ -69,7 +69,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('.12 / .48').toJSON()).toEqual({
       type: 'BinaryOperator',
-      name: 'Quot',
+      name: 'Quotient',
       left: Literal(.12),
       right: Literal(.48),
     });
@@ -80,7 +80,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('1.1 ^ 3').toJSON()).toEqual({
       type: 'BinaryOperator',
-      name: 'Exp',
+      name: 'Exponent',
       left: Literal(1.1),
       right: Literal(3),
     });
@@ -95,7 +95,7 @@ describe('Parser', () => {
       left: Literal(1),
       right: {
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(2),
         right: Literal(3),
       },
@@ -106,7 +106,7 @@ describe('Parser', () => {
       name: 'Sum',
       left: {
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(1),
         right: Literal(2),
       },
@@ -123,7 +123,7 @@ describe('Parser', () => {
       left: Literal(1),
       right: {
         type: 'BinaryOperator',
-        name: 'Exp',
+        name: 'Exponent',
         left: Literal(2),
         right: Literal(3),
       },
@@ -134,7 +134,7 @@ describe('Parser', () => {
       name: 'Sum',
       left: {
         type: 'BinaryOperator',
-        name: 'Exp',
+        name: 'Exponent',
         left: Literal(1),
         right: Literal(2),
       },
@@ -168,7 +168,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('(1 + 2) * 3').toJSON()).toEqual({
       type: 'BinaryOperator',
-      name: 'Prod',
+      name: 'Product',
       left: {
         type: 'BinaryOperator',
         name: 'Sum',
@@ -190,7 +190,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('log(1)').toJSON()).toEqual({
       type: 'FunctionOperator',
-      name: 'Log',
+      name: 'Log10',
       params: [Literal(1)],
     });
 
@@ -200,7 +200,7 @@ describe('Parser', () => {
 
     expect(Parser.parse('pow(1, 2)').toJSON()).toEqual({
       type: 'FunctionOperator',
-      name: 'Pow',
+      name: 'Exponent',
       params: [Literal(1), Literal(2)],
     });
 
@@ -250,13 +250,13 @@ describe('Parser', () => {
 
       expect(Parser.parse('3x').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(3),
         right: Symbol('x'),
       });
       expect(Parser.parse('x3').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Symbol('x'),
         right: Literal(3),
       });
@@ -266,7 +266,7 @@ describe('Parser', () => {
 
       expect(Parser.parse('xy').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Symbol('x'),
         right: Symbol('y'),
       });
@@ -277,16 +277,16 @@ describe('Parser', () => {
 
       expect(Parser.parse('x^2y^2').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: {
           type: 'BinaryOperator',
-          name: 'Exp',
+          name: 'Exponent',
           left: Symbol('x'),
           right: Literal(2),
         },
         right: {
           type: 'BinaryOperator',
-          name: 'Exp',
+          name: 'Exponent',
           left: Symbol('y'),
           right: Literal(2),
         },
@@ -298,21 +298,21 @@ describe('Parser', () => {
 
       expect(Parser.parse('(1)(2)').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(1),
         right: Literal(2),
       });
 
       expect(Parser.parse('1(2)').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(1),
         right: Literal(2),
       });
 
       expect(Parser.parse('(1)2').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Literal(1),
         right: Literal(2),
       });
@@ -323,7 +323,7 @@ describe('Parser', () => {
 
       expect(Parser.parse('xsin(y)').toJSON()).toEqual({
         type: 'BinaryOperator',
-        name: 'Prod',
+        name: 'Product',
         left: Symbol('x'),
         right: {
           type: 'FunctionOperator',
