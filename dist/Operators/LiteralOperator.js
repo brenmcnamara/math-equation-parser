@@ -16,16 +16,6 @@ var LiteralOperator = function () {
     value: function getType() {
       return 'Literal';
     }
-  }, {
-    key: 'claimToken',
-    value: function claimToken(text) {
-      // Test for some valid number.
-      var match = text.match(NumberRegExp);
-      if (!match) {
-        return { claim: '', remainder: text };
-      }
-      return { claim: match[0], remainder: text.slice(match[0].length) };
-    }
   }]);
 
   function LiteralOperator(value) {

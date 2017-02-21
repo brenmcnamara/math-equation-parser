@@ -43,31 +43,31 @@ exports.default = {
       type: 'FunctionOperator',
       name: 'Sine',
       symbol: 'sin',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     cosin: {
       type: 'FunctionOperator',
       name: 'Cosine',
       symbol: 'cosin',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     tan: {
       type: 'FunctionOperator',
       name: 'Tangent',
       symbol: 'tan',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     pow: {
       type: 'FunctionOperator',
       name: 'Exponent',
       symbol: 'pow',
-      numberOfOperands: 2
+      numberOfParams: 2
     },
     log: {
       type: 'FunctionOperator',
       name: 'Log10',
       symbol: 'log',
-      numberOfOperands: 1
+      numberOfParams: 1
     }
   }
 

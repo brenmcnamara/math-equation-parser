@@ -6,6 +6,8 @@ import LiteralOperator from './Operators/LiteralOperator';
 import SymbolOperator from './Operators/SymbolOperator';
 
 import assert from 'assert';
+import getClaimToken from './getClaimToken';
+import getNumberOfParams from './getNumberOfParams';
 
 const PrecedenceMap = {
   LOW: 1,
@@ -54,6 +56,12 @@ export default class Parser {
   }
 
   parse(text) {
+    const LiteralPayload = { type: 'Literal' };
+    const SymbolPayload = {
+      type: 'Symbol',
+      validSymbols: this._config.validSymbols,
+    };
+
     let textToProcess = text.replace(/\s+/g, '');
     const processor = new OperatorProcessor(this._config);
 
@@ -63,12 +71,12 @@ export default class Parser {
       processor.startPass();
 
       // Check if we found a number literal.
-      const literalClaimObj = LiteralOperator.claimToken(textToProcess);
-      if (literalClaimObj.claim.length > 0) {
-        const value = parseFloat(literalClaimObj.claim, 10);
+      const literalClaimToken = getClaimToken(LiteralPayload, textToProcess);
+      if (literalClaimToken.claim.length > 0) {
+        const value = parseFloat(literalClaimToken.claim, 10);
         const literal = new LiteralOperator(value);
         processor.addLiteral(literal);
-        textToProcess = literalClaimObj.remainder;
+        textToProcess = literalClaimToken.remainder;
         continue;
       }
 
@@ -91,11 +99,11 @@ export default class Parser {
       // Check if this is a binary operator.
       let isBinaryOperator = false;
       for (let payload of this._binaryPayloads) {
-        const claimObj = BinaryOperator.claimToken(payload, textToProcess);
-        if (claimObj.claim.length > 0) {
+        const claimToken = getClaimToken(payload, textToProcess);
+        if (claimToken.claim.length > 0) {
           isBinaryOperator = true;
           processor.addBinaryPayload(payload);
-          textToProcess = claimObj.remainder;
+          textToProcess = claimToken.remainder;
           break;
         }
       }
@@ -104,31 +112,25 @@ export default class Parser {
       // Check if this is a function operator
       let isFunctionOperator = false;
       for (let payload of this._functionPayloads) {
-        const claimObj = FunctionOperator.claimToken(payload, textToProcess);
-        if (claimObj.claim.length > 0) {
+        const claimToken = getClaimToken(payload, textToProcess);
+        if (claimToken.claim.length > 0) {
           isFunctionOperator = true;
           processor.addFunctionPayload(payload);
           assert(
-            claimObj.remainder.charAt(0) === '(', // Paren after function
+            claimToken.remainder.charAt(0) === '(', // Paren after function
             'Invalid Equation',
           );
-          textToProcess = claimObj.remainder.slice(1);
+          textToProcess = claimToken.remainder.slice(1);
           break;
         }
       }
       if (isFunctionOperator) { continue; }
 
       // Check if this is a symbol.
-      const symbolClaimObj = SymbolOperator.claimToken(textToProcess);
-      if (
-        symbolClaimObj.claim.length > 0 &&
-        (
-          !this._config.validSymbols ||
-          this._config.validSymbols.indexOf(symbolClaimObj.claim) >= 0
-        )
-      ) {
-        const symbol = new SymbolOperator(symbolClaimObj.claim);
-        textToProcess = symbolClaimObj.remainder;
+      const symbolClaimToken = getClaimToken(SymbolPayload, textToProcess);
+      if (symbolClaimToken.claim.length > 0) {
+        const symbol = new SymbolOperator(symbolClaimToken.claim);
+        textToProcess = symbolClaimToken.remainder;
         processor.addSymbol(symbol);
         continue;
       }
@@ -206,7 +208,7 @@ class OperatorProcessor {
     this._typeAddedCurrentPass = 'FunctionOperator';
     this._maybeImplicitMultiply();
     this._operatorPayloads.push(payload, 'StartOfFunction');
-    this._remainingFunctionOperands = getNumberOfOperands(payload);
+    this._remainingFunctionOperands = getNumberOfParams(payload);
   }
 
   addOpenParens() {
@@ -229,13 +231,13 @@ class OperatorProcessor {
       operatorPayload !== '(' &&
       operatorPayload !== 'StartOfFunction'
     ) {
-      const numberOfOperands = getNumberOfOperands(operatorPayload);
+      const numberOfParams = getNumberOfParams(operatorPayload);
       const operands =
-        this._operators.splice(-numberOfOperands, numberOfOperands);
+        this._operators.splice(-numberOfParams, numberOfParams);
       const operatorName = operatorPayload.name;
       assert(
-        operands.length === numberOfOperands,
-        `Operator ${operatorName} needs ${numberOfOperands} operands`,
+        operands.length === numberOfParams,
+        `Operator ${operatorName} needs ${numberOfParams} operands`,
       );
       this._operators.push(
         operatorPayload.type === 'BinaryOperator'
@@ -254,7 +256,7 @@ class OperatorProcessor {
 
       // StartOfFunction is always preceded by its FunctionOperator
       const functionPayload = this._operatorPayloads.pop();
-      const numberOfFunctionOperands = getNumberOfOperands(functionPayload);
+      const numberOfFunctionOperands = getNumberOfParams(functionPayload);
       assert.equal(functionPayload.type, 'FunctionOperator');
       const operands = this._operators.splice(
         -numberOfFunctionOperands,
@@ -285,12 +287,12 @@ class OperatorProcessor {
         payload !== '(' && payload !== 'StartOfFunction',
         'Invalid equation',
       );
-      const numberOfOperands = getNumberOfOperands(payload);
+      const numberOfParams = getNumberOfParams(payload);
       const operands = this._operators.splice(
-        -numberOfOperands,
-        numberOfOperands,
+        -numberOfParams,
+        numberOfParams,
       );
-      assert.equal(operands.length, numberOfOperands);
+      assert.equal(operands.length, numberOfParams);
       const OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
       assert.ok(OperatorCtor, 'Unrecognized payload', payload.type);
       this._operators.push(new OperatorCtor(payload, operands));
@@ -326,8 +328,4 @@ class OperatorProcessor {
     this._addedOperatorCurrentPass = true;
   }
 
-}
-
-function getNumberOfOperands(payload) {
-  return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
 }

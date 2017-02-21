@@ -30,6 +30,14 @@ var _assert = require('assert');
 
 var _assert2 = _interopRequireDefault(_assert);
 
+var _getClaimToken = require('./getClaimToken');
+
+var _getClaimToken2 = _interopRequireDefault(_getClaimToken);
+
+var _getNumberOfParams = require('./getNumberOfParams');
+
+var _getNumberOfParams2 = _interopRequireDefault(_getNumberOfParams);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -91,6 +99,12 @@ var Parser = function () {
   }, {
     key: 'parse',
     value: function parse(text) {
+      var LiteralPayload = { type: 'Literal' };
+      var SymbolPayload = {
+        type: 'Symbol',
+        validSymbols: this._config.validSymbols
+      };
+
       var textToProcess = text.replace(/\s+/g, '');
       var processor = new OperatorProcessor(this._config);
 
@@ -100,12 +114,12 @@ var Parser = function () {
         processor.startPass();
 
         // Check if we found a number literal.
-        var literalClaimObj = _LiteralOperator2.default.claimToken(textToProcess);
-        if (literalClaimObj.claim.length > 0) {
-          var value = parseFloat(literalClaimObj.claim, 10);
+        var literalClaimToken = (0, _getClaimToken2.default)(LiteralPayload, textToProcess);
+        if (literalClaimToken.claim.length > 0) {
+          var value = parseFloat(literalClaimToken.claim, 10);
           var literal = new _LiteralOperator2.default(value);
           processor.addLiteral(literal);
-          textToProcess = literalClaimObj.remainder;
+          textToProcess = literalClaimToken.remainder;
           continue;
         }
 
@@ -134,11 +148,11 @@ var Parser = function () {
           for (var _iterator = this._binaryPayloads[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
             var payload = _step.value;
 
-            var claimObj = _BinaryOperator2.default.claimToken(payload, textToProcess);
-            if (claimObj.claim.length > 0) {
+            var claimToken = (0, _getClaimToken2.default)(payload, textToProcess);
+            if (claimToken.claim.length > 0) {
               isBinaryOperator = true;
               processor.addBinaryPayload(payload);
-              textToProcess = claimObj.remainder;
+              textToProcess = claimToken.remainder;
               break;
             }
           }
@@ -171,13 +185,13 @@ var Parser = function () {
           for (var _iterator2 = this._functionPayloads[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
             var _payload = _step2.value;
 
-            var _claimObj = _FunctionOperator2.default.claimToken(_payload, textToProcess);
-            if (_claimObj.claim.length > 0) {
+            var _claimToken = (0, _getClaimToken2.default)(_payload, textToProcess);
+            if (_claimToken.claim.length > 0) {
               isFunctionOperator = true;
               processor.addFunctionPayload(_payload);
-              (0, _assert2.default)(_claimObj.remainder.charAt(0) === '(', // Paren after function
+              (0, _assert2.default)(_claimToken.remainder.charAt(0) === '(', // Paren after function
               'Invalid Equation');
-              textToProcess = _claimObj.remainder.slice(1);
+              textToProcess = _claimToken.remainder.slice(1);
               break;
             }
           }
@@ -201,10 +215,10 @@ var Parser = function () {
         }
 
         // Check if this is a symbol.
-        var symbolClaimObj = _SymbolOperator2.default.claimToken(textToProcess);
-        if (symbolClaimObj.claim.length > 0 && (!this._config.validSymbols || this._config.validSymbols.indexOf(symbolClaimObj.claim) >= 0)) {
-          var symbol = new _SymbolOperator2.default(symbolClaimObj.claim);
-          textToProcess = symbolClaimObj.remainder;
+        var symbolClaimToken = (0, _getClaimToken2.default)(SymbolPayload, textToProcess);
+        if (symbolClaimToken.claim.length > 0) {
+          var symbol = new _SymbolOperator2.default(symbolClaimToken.claim);
+          textToProcess = symbolClaimToken.remainder;
           processor.addSymbol(symbol);
           continue;
         }
@@ -287,7 +301,7 @@ var OperatorProcessor = function () {
       this._typeAddedCurrentPass = 'FunctionOperator';
       this._maybeImplicitMultiply();
       this._operatorPayloads.push(payload, 'StartOfFunction');
-      this._remainingFunctionOperands = getNumberOfOperands(payload);
+      this._remainingFunctionOperands = (0, _getNumberOfParams2.default)(payload);
     }
   }, {
     key: 'addOpenParens',
@@ -308,10 +322,10 @@ var OperatorProcessor = function () {
       // Continuously pop until reaching the corresponding parenthesis.
       var operatorPayload = this._operatorPayloads.pop();
       while (operatorPayload && operatorPayload !== '(' && operatorPayload !== 'StartOfFunction') {
-        var numberOfOperands = getNumberOfOperands(operatorPayload);
-        var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
+        var numberOfParams = (0, _getNumberOfParams2.default)(operatorPayload);
+        var operands = this._operators.splice(-numberOfParams, numberOfParams);
         var operatorName = operatorPayload.name;
-        (0, _assert2.default)(operands.length === numberOfOperands, 'Operator ' + operatorName + ' needs ' + numberOfOperands + ' operands');
+        (0, _assert2.default)(operands.length === numberOfParams, 'Operator ' + operatorName + ' needs ' + numberOfParams + ' operands');
         this._operators.push(operatorPayload.type === 'BinaryOperator' ? new _BinaryOperator2.default(operatorPayload, operands) : new _FunctionOperator2.default(operatorPayload, operands));
         this._addedOperatorCurrentPass = true;
         operatorPayload = this._operatorPayloads.pop();
@@ -325,7 +339,7 @@ var OperatorProcessor = function () {
 
         // StartOfFunction is always preceded by its FunctionOperator
         var functionPayload = this._operatorPayloads.pop();
-        var numberOfFunctionOperands = getNumberOfOperands(functionPayload);
+        var numberOfFunctionOperands = (0, _getNumberOfParams2.default)(functionPayload);
         _assert2.default.equal(functionPayload.type, 'FunctionOperator');
         var _operands = this._operators.splice(-numberOfFunctionOperands, numberOfFunctionOperands);
         (0, _assert2.default)(_operands.length === numberOfFunctionOperands, 'Corrupt state: Not enough elements in resolvedOperators');
@@ -353,9 +367,9 @@ var OperatorProcessor = function () {
       while (this._operatorPayloads.length > 0) {
         var payload = this._operatorPayloads.pop();
         (0, _assert2.default)(payload !== '(' && payload !== 'StartOfFunction', 'Invalid equation');
-        var numberOfOperands = getNumberOfOperands(payload);
-        var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
-        _assert2.default.equal(operands.length, numberOfOperands);
+        var numberOfParams = (0, _getNumberOfParams2.default)(payload);
+        var operands = this._operators.splice(-numberOfParams, numberOfParams);
+        _assert2.default.equal(operands.length, numberOfParams);
         var OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
         _assert2.default.ok(OperatorCtor, 'Unrecognized payload', payload.type);
         this._operators.push(new OperatorCtor(payload, operands));
@@ -383,7 +397,3 @@ var OperatorProcessor = function () {
 
   return OperatorProcessor;
 }();
-
-function getNumberOfOperands(payload) {
-  return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
-}

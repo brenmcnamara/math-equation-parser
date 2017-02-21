@@ -1,14 +1,6 @@
 
 export default class BinaryOperator {
 
-  static claimToken(payload, text) {
-    const symbol = payload.symbol;
-    if (text.startsWith(symbol)) {
-      return {claim: symbol, remainder: text.slice(symbol.length)};
-    }
-    return {claim: '', remainder: text};
-  }
-
   static getType() { return 'BinaryOperator'; }
 
   static getNumberOfOperands() { return 2; }

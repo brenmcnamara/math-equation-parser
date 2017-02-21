@@ -14,14 +14,6 @@ var SymbolOperator = function () {
     value: function getType() {
       return 'Symbol';
     }
-  }, {
-    key: 'claimToken',
-    value: function claimToken(text) {
-      if (/^[a-zA-Z]/.test(text)) {
-        return { claim: text.charAt(0), remainder: text.slice(1) };
-      }
-      return { claim: '', remainder: text };
-    }
   }]);
 
   function SymbolOperator(symbol) {

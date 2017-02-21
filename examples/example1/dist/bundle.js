@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 15);
+/******/ 	return __webpack_require__(__webpack_require__.s = 17);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -100,11 +100,11 @@ module.exports = g;
 "use strict";
 
 
-var _ = __webpack_require__(9);
+var _ = __webpack_require__(11);
 
 var _2 = _interopRequireDefault(_);
 
-var _jsonPretty = __webpack_require__(11);
+var _jsonPretty = __webpack_require__(13);
 
 var _jsonPretty2 = _interopRequireDefault(_jsonPretty);
 
@@ -263,7 +263,7 @@ function isBuffer(b) {
 // ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var util = __webpack_require__(14);
+var util = __webpack_require__(16);
 var hasOwn = Object.prototype.hasOwnProperty;
 var pSlice = Array.prototype.slice;
 var functionsHaveNames = (function () {
@@ -743,15 +743,6 @@ function _classCallCheck(instance, Constructor) {
 
 var BinaryOperator = function () {
   _createClass(BinaryOperator, null, [{
-    key: 'claimToken',
-    value: function claimToken(payload, text) {
-      var symbol = payload.symbol;
-      if (text.startsWith(symbol)) {
-        return { claim: symbol, remainder: text.slice(symbol.length) };
-      }
-      return { claim: '', remainder: text };
-    }
-  }, {
     key: 'getType',
     value: function getType() {
       return 'BinaryOperator';
@@ -842,31 +833,31 @@ exports.default = {
       type: 'FunctionOperator',
       name: 'Sine',
       symbol: 'sin',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     cosin: {
       type: 'FunctionOperator',
       name: 'Cosine',
       symbol: 'cosin',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     tan: {
       type: 'FunctionOperator',
       name: 'Tangent',
       symbol: 'tan',
-      numberOfOperands: 1
+      numberOfParams: 1
     },
     pow: {
       type: 'FunctionOperator',
       name: 'Exponent',
       symbol: 'pow',
-      numberOfOperands: 2
+      numberOfParams: 2
     },
     log: {
       type: 'FunctionOperator',
       name: 'Log10',
       symbol: 'log',
-      numberOfOperands: 1
+      numberOfParams: 1
     }
   }
 
@@ -904,15 +895,6 @@ var FunctionOperator = function () {
     key: 'getType',
     value: function getType() {
       return 'FunctionOperator';
-    }
-  }, {
-    key: 'claimToken',
-    value: function claimToken(payload, text) {
-      var symbol = payload.symbol;
-      if (text.startsWith(symbol)) {
-        return { claim: symbol, remainder: text.slice(symbol.length) };
-      }
-      return { claim: '', remainder: text };
     }
   }, {
     key: 'getNumberOfOperands',
@@ -982,16 +964,6 @@ var LiteralOperator = function () {
     value: function getType() {
       return 'Literal';
     }
-  }, {
-    key: 'claimToken',
-    value: function claimToken(text) {
-      // Test for some valid number.
-      var match = text.match(NumberRegExp);
-      if (!match) {
-        return { claim: '', remainder: text };
-      }
-      return { claim: match[0], remainder: text.slice(match[0].length) };
-    }
   }]);
 
   function LiteralOperator(value) {
@@ -1058,14 +1030,6 @@ var SymbolOperator = function () {
     key: 'getType',
     value: function getType() {
       return 'Symbol';
-    }
-  }, {
-    key: 'claimToken',
-    value: function claimToken(text) {
-      if (/^[a-zA-Z]/.test(text)) {
-        return { claim: text.charAt(0), remainder: text.slice(1) };
-      }
-      return { claim: '', remainder: text };
     }
   }]);
 
@@ -1136,6 +1100,14 @@ var _assert = __webpack_require__(2);
 
 var _assert2 = _interopRequireDefault(_assert);
 
+var _getClaimToken = __webpack_require__(9);
+
+var _getClaimToken2 = _interopRequireDefault(_getClaimToken);
+
+var _getNumberOfParams = __webpack_require__(10);
+
+var _getNumberOfParams2 = _interopRequireDefault(_getNumberOfParams);
+
 function _interopRequireDefault(obj) {
   return obj && obj.__esModule ? obj : { default: obj };
 }
@@ -1203,6 +1175,12 @@ var Parser = function () {
   }, {
     key: 'parse',
     value: function parse(text) {
+      var LiteralPayload = { type: 'Literal' };
+      var SymbolPayload = {
+        type: 'Symbol',
+        validSymbols: this._config.validSymbols
+      };
+
       var textToProcess = text.replace(/\s+/g, '');
       var processor = new OperatorProcessor(this._config);
 
@@ -1212,12 +1190,12 @@ var Parser = function () {
         processor.startPass();
 
         // Check if we found a number literal.
-        var literalClaimObj = _LiteralOperator2.default.claimToken(textToProcess);
-        if (literalClaimObj.claim.length > 0) {
-          var value = parseFloat(literalClaimObj.claim, 10);
+        var literalClaimToken = (0, _getClaimToken2.default)(LiteralPayload, textToProcess);
+        if (literalClaimToken.claim.length > 0) {
+          var value = parseFloat(literalClaimToken.claim, 10);
           var literal = new _LiteralOperator2.default(value);
           processor.addLiteral(literal);
-          textToProcess = literalClaimObj.remainder;
+          textToProcess = literalClaimToken.remainder;
           continue;
         }
 
@@ -1246,11 +1224,11 @@ var Parser = function () {
           for (var _iterator = this._binaryPayloads[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
             var payload = _step.value;
 
-            var claimObj = _BinaryOperator2.default.claimToken(payload, textToProcess);
-            if (claimObj.claim.length > 0) {
+            var claimToken = (0, _getClaimToken2.default)(payload, textToProcess);
+            if (claimToken.claim.length > 0) {
               isBinaryOperator = true;
               processor.addBinaryPayload(payload);
-              textToProcess = claimObj.remainder;
+              textToProcess = claimToken.remainder;
               break;
             }
           }
@@ -1283,13 +1261,13 @@ var Parser = function () {
           for (var _iterator2 = this._functionPayloads[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
             var _payload = _step2.value;
 
-            var _claimObj = _FunctionOperator2.default.claimToken(_payload, textToProcess);
-            if (_claimObj.claim.length > 0) {
+            var _claimToken = (0, _getClaimToken2.default)(_payload, textToProcess);
+            if (_claimToken.claim.length > 0) {
               isFunctionOperator = true;
               processor.addFunctionPayload(_payload);
-              (0, _assert2.default)(_claimObj.remainder.charAt(0) === '(', // Paren after function
+              (0, _assert2.default)(_claimToken.remainder.charAt(0) === '(', // Paren after function
               'Invalid Equation');
-              textToProcess = _claimObj.remainder.slice(1);
+              textToProcess = _claimToken.remainder.slice(1);
               break;
             }
           }
@@ -1313,10 +1291,10 @@ var Parser = function () {
         }
 
         // Check if this is a symbol.
-        var symbolClaimObj = _SymbolOperator2.default.claimToken(textToProcess);
-        if (symbolClaimObj.claim.length > 0 && (!this._config.validSymbols || this._config.validSymbols.indexOf(symbolClaimObj.claim) >= 0)) {
-          var symbol = new _SymbolOperator2.default(symbolClaimObj.claim);
-          textToProcess = symbolClaimObj.remainder;
+        var symbolClaimToken = (0, _getClaimToken2.default)(SymbolPayload, textToProcess);
+        if (symbolClaimToken.claim.length > 0) {
+          var symbol = new _SymbolOperator2.default(symbolClaimToken.claim);
+          textToProcess = symbolClaimToken.remainder;
           processor.addSymbol(symbol);
           continue;
         }
@@ -1399,7 +1377,7 @@ var OperatorProcessor = function () {
       this._typeAddedCurrentPass = 'FunctionOperator';
       this._maybeImplicitMultiply();
       this._operatorPayloads.push(payload, 'StartOfFunction');
-      this._remainingFunctionOperands = getNumberOfOperands(payload);
+      this._remainingFunctionOperands = (0, _getNumberOfParams2.default)(payload);
     }
   }, {
     key: 'addOpenParens',
@@ -1420,10 +1398,10 @@ var OperatorProcessor = function () {
       // Continuously pop until reaching the corresponding parenthesis.
       var operatorPayload = this._operatorPayloads.pop();
       while (operatorPayload && operatorPayload !== '(' && operatorPayload !== 'StartOfFunction') {
-        var numberOfOperands = getNumberOfOperands(operatorPayload);
-        var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
+        var numberOfParams = (0, _getNumberOfParams2.default)(operatorPayload);
+        var operands = this._operators.splice(-numberOfParams, numberOfParams);
         var operatorName = operatorPayload.name;
-        (0, _assert2.default)(operands.length === numberOfOperands, 'Operator ' + operatorName + ' needs ' + numberOfOperands + ' operands');
+        (0, _assert2.default)(operands.length === numberOfParams, 'Operator ' + operatorName + ' needs ' + numberOfParams + ' operands');
         this._operators.push(operatorPayload.type === 'BinaryOperator' ? new _BinaryOperator2.default(operatorPayload, operands) : new _FunctionOperator2.default(operatorPayload, operands));
         this._addedOperatorCurrentPass = true;
         operatorPayload = this._operatorPayloads.pop();
@@ -1437,7 +1415,7 @@ var OperatorProcessor = function () {
 
         // StartOfFunction is always preceded by its FunctionOperator
         var functionPayload = this._operatorPayloads.pop();
-        var numberOfFunctionOperands = getNumberOfOperands(functionPayload);
+        var numberOfFunctionOperands = (0, _getNumberOfParams2.default)(functionPayload);
         _assert2.default.equal(functionPayload.type, 'FunctionOperator');
         var _operands = this._operators.splice(-numberOfFunctionOperands, numberOfFunctionOperands);
         (0, _assert2.default)(_operands.length === numberOfFunctionOperands, 'Corrupt state: Not enough elements in resolvedOperators');
@@ -1465,9 +1443,9 @@ var OperatorProcessor = function () {
       while (this._operatorPayloads.length > 0) {
         var payload = this._operatorPayloads.pop();
         (0, _assert2.default)(payload !== '(' && payload !== 'StartOfFunction', 'Invalid equation');
-        var numberOfOperands = getNumberOfOperands(payload);
-        var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
-        _assert2.default.equal(operands.length, numberOfOperands);
+        var numberOfParams = (0, _getNumberOfParams2.default)(payload);
+        var operands = this._operators.splice(-numberOfParams, numberOfParams);
+        _assert2.default.equal(operands.length, numberOfParams);
         var OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
         _assert2.default.ok(OperatorCtor, 'Unrecognized payload', payload.type);
         this._operators.push(new OperatorCtor(payload, operands));
@@ -1496,12 +1474,98 @@ var OperatorProcessor = function () {
   return OperatorProcessor;
 }();
 
-function getNumberOfOperands(payload) {
-  return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = getClaimToken;
+
+var NumberRegExp = /(^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/;
+
+function getClaimToken(payload, text) {
+
+  switch (payload.type) {
+
+    case 'Literal':
+      {
+        var match = text.match(NumberRegExp);
+        if (!match) {
+          return { claim: '', remainder: text };
+        }
+        return { claim: match[0], remainder: text.slice(match[0].length) };
+      }
+
+    case 'Symbol':
+      {
+        if (!/^[a-zA-Z]/.test(text)) {
+          return { claim: '', remainder: text };
+        }
+        var validSymbols = payload.validSymbols;
+
+        if (validSymbols && validSymbols.indexOf(text.charAt(0)) < 0) {
+          return { claim: '', remainder: text };
+        }
+        return { claim: text.charAt(0), remainder: text.slice(1) };
+      }
+
+    case 'BinaryOperator':
+      {
+        var symbol = payload.symbol;
+
+        if (text.startsWith(symbol)) {
+          return { claim: symbol, remainder: text.slice(symbol.length) };
+        }
+        return { claim: '', remainder: text };
+      }
+
+    case 'FunctionOperator':
+      {
+        var _symbol = payload.symbol;
+
+        if (text.startsWith(_symbol)) {
+          return { claim: _symbol, remainder: text.slice(_symbol.length) };
+        }
+        return { claim: '', remainder: text };
+      }
+
+    default:
+      throw Error('Unrecognized payload ' + payload.type);
+  }
 }
 
 /***/ }),
-/* 9 */
+/* 10 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = getNumberOfParams;
+function getNumberOfParams(payload) {
+
+  switch (payload.type) {
+    case 'UnaryOperator':
+      return 1;
+    case 'BinaryOperator':
+      return 2;
+    case 'FunctionOperator':
+      return payload.numberOfParams;
+    default:
+      throw Error('Unknown payload ' + payload.type);
+  }
+}
+
+/***/ }),
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1518,7 +1582,7 @@ function _interopRequireDefault(obj) {
 module.exports = _Parser2.default;
 
 /***/ }),
-/* 10 */
+/* 12 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
@@ -1547,7 +1611,7 @@ if (typeof Object.create === 'function') {
 
 
 /***/ }),
-/* 11 */
+/* 13 */
 /***/ (function(module, exports) {
 
 module.exports = (function() {
@@ -1592,7 +1656,7 @@ module.exports = (function() {
 
 
 /***/ }),
-/* 12 */
+/* 14 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -1778,7 +1842,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -1789,7 +1853,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -2317,7 +2381,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(13);
+exports.isBuffer = __webpack_require__(15);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -2361,7 +2425,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(10);
+exports.inherits = __webpack_require__(12);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -2379,10 +2443,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(12)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(14)))
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(1);

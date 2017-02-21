@@ -15,15 +15,6 @@ var FunctionOperator = function () {
       return 'FunctionOperator';
     }
   }, {
-    key: 'claimToken',
-    value: function claimToken(payload, text) {
-      var symbol = payload.symbol;
-      if (text.startsWith(symbol)) {
-        return { claim: symbol, remainder: text.slice(symbol.length) };
-      }
-      return { claim: '', remainder: text };
-    }
-  }, {
     key: 'getNumberOfOperands',
     value: function getNumberOfOperands(payload) {
       assert.ok(payload.type === 'FunctionOperator');

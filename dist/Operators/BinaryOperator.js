@@ -12,15 +12,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var BinaryOperator = function () {
   _createClass(BinaryOperator, null, [{
-    key: 'claimToken',
-    value: function claimToken(payload, text) {
-      var symbol = payload.symbol;
-      if (text.startsWith(symbol)) {
-        return { claim: symbol, remainder: text.slice(symbol.length) };
-      }
-      return { claim: '', remainder: text };
-    }
-  }, {
     key: 'getType',
     value: function getType() {
       return 'BinaryOperator';
