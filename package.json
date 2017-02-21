@@ -1,5 +1,5 @@
 {
-  "name": "equation-parser",
+  "name": "math-equation-parser",
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
