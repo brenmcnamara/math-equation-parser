@@ -4,9 +4,12 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "babel src --out-dir dist --ignore __tests__",
+    "build": "npm-run-all build-dist build-example1",
+    "build-dist": "babel src --out-dir dist --ignore __tests__",
+    "build-example1": "webpack --config webpack.config.example1.js",
     "lint": "esw webpack.config.* src --color",
     "lint-watch": "npm run lint -- --watch",
+    "start-example1": "http-server examples/example1",
     "test": "jest",
     "test-watch": "npm run test -- --watch"
   },
@@ -25,9 +28,13 @@
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jest": "^1.0.2",
     "eslint-watch": "^2.1.14",
-    "jest": "^18.1.0"
+    "jest": "^18.1.0",
+    "webpack": "^2.2.1"
   },
   "dependencies": {
-    "assert": "^1.4.1"
+    "assert": "^1.4.1",
+    "http-server": "^0.9.0",
+    "json-pretty": "^0.0.1",
+    "npm-run-all": "^4.0.1"
   }
 }

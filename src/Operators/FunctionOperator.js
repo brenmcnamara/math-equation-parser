@@ -11,6 +11,11 @@ export default class FunctionOperator {
     return {claim: '', remainder: text};
   }
 
+  static getNumberOfOperands(payload) {
+    assert.ok(payload.type === 'FunctionOperator');
+    return payload.numberOfOperands;
+  }
+
   constructor(payload, params) {
     this._params = params;
     this._payload = payload;

@@ -1,5 +1,5 @@
 
-import EquationParser from 'equation-parser';
+import EquationParser from '../../../';
 
 import jsonPretty from 'json-pretty';
 

@@ -50,6 +50,11 @@ var DefaultConfig = {
   isLeftAssociative: true
 };
 
+var TYPE_TO_OPERATOR_CTOR = {
+  BinaryOperator: _BinaryOperator2.default,
+  FunctionOperator: _FunctionOperator2.default
+};
+
 var Parser = function () {
   _createClass(Parser, null, [{
     key: 'parse',
@@ -248,12 +253,18 @@ var OperatorProcessor = function () {
   }, {
     key: 'addBinaryPayload',
     value: function addBinaryPayload(payload) {
-      var implicitMultiply = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+      this._typeAddedCurrentPass = 'BinaryOperator';
+      this._addBinaryPayloadSilently(payload);
+    }
 
-      if (!implicitMultiply) {
-        this._typeAddedCurrentPass = 'BinaryOperator';
-        this._maybeImplicitMultiply();
-      }
+    /**
+     * Adds a binary payload without recording that the current pass added a
+     * binary payload. This is used for implicit multiplication.
+     */
+
+  }, {
+    key: '_addBinaryPayloadSilently',
+    value: function _addBinaryPayloadSilently(payload) {
       var precedence = PrecedenceMap[payload.precedence];
       var lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
       while (lastPayload && lastPayload !== '(' && lastPayload !== 'StartOfFunction' && (
@@ -276,7 +287,7 @@ var OperatorProcessor = function () {
       this._typeAddedCurrentPass = 'FunctionOperator';
       this._maybeImplicitMultiply();
       this._operatorPayloads.push(payload, 'StartOfFunction');
-      this._remainingFunctionOperands = _numberOfOperands(payload);
+      this._remainingFunctionOperands = getNumberOfOperands(payload);
     }
   }, {
     key: 'addOpenParens',
@@ -297,7 +308,7 @@ var OperatorProcessor = function () {
       // Continuously pop until reaching the corresponding parenthesis.
       var operatorPayload = this._operatorPayloads.pop();
       while (operatorPayload && operatorPayload !== '(' && operatorPayload !== 'StartOfFunction') {
-        var numberOfOperands = _numberOfOperands(operatorPayload);
+        var numberOfOperands = getNumberOfOperands(operatorPayload);
         var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
         var operatorName = operatorPayload.name;
         (0, _assert2.default)(operands.length === numberOfOperands, 'Operator ' + operatorName + ' needs ' + numberOfOperands + ' operands');
@@ -314,7 +325,7 @@ var OperatorProcessor = function () {
 
         // StartOfFunction is always preceded by its FunctionOperator
         var functionPayload = this._operatorPayloads.pop();
-        var numberOfFunctionOperands = _numberOfOperands(functionPayload);
+        var numberOfFunctionOperands = getNumberOfOperands(functionPayload);
         _assert2.default.equal(functionPayload.type, 'FunctionOperator');
         var _operands = this._operators.splice(-numberOfFunctionOperands, numberOfFunctionOperands);
         (0, _assert2.default)(_operands.length === numberOfFunctionOperands, 'Corrupt state: Not enough elements in resolvedOperators');
@@ -342,10 +353,12 @@ var OperatorProcessor = function () {
       while (this._operatorPayloads.length > 0) {
         var payload = this._operatorPayloads.pop();
         (0, _assert2.default)(payload !== '(' && payload !== 'StartOfFunction', 'Invalid equation');
-        var numberOfOperands = _numberOfOperands(payload);
+        var numberOfOperands = getNumberOfOperands(payload);
         var operands = this._operators.splice(-numberOfOperands, numberOfOperands);
         _assert2.default.equal(operands.length, numberOfOperands);
-        this._operators.push(payload.type === 'BinaryOperator' ? new _BinaryOperator2.default(payload, operands) : new _FunctionOperator2.default(payload, operands));
+        var OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
+        _assert2.default.ok(OperatorCtor, 'Unrecognized payload', payload.type);
+        this._operators.push(new OperatorCtor(payload, operands));
       }
       (0, _assert2.default)(this._operators.length === 1, 'Invalid equation');
       return this._operators[0].toJSON();
@@ -357,7 +370,7 @@ var OperatorProcessor = function () {
       var leftTypes = [')', 'Literal', 'Symbol'];
       var rightTypes = ['FunctionOperator', '(', 'Literal', 'Symbol'];
       if (this._config.implicitMultiply && leftTypes.indexOf(this._typeAddedLastPass) >= 0 && rightTypes.indexOf(this._typeAddedCurrentPass) >= 0) {
-        this.addBinaryPayload(_CoreOperators2.default.Binary.prod, true);
+        this._addBinaryPayloadSilently(_CoreOperators2.default.Binary.prod);
       }
     }
   }, {
@@ -371,6 +384,6 @@ var OperatorProcessor = function () {
   return OperatorProcessor;
 }();
 
-function _numberOfOperands(payload) {
+function getNumberOfOperands(payload) {
   return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
 }

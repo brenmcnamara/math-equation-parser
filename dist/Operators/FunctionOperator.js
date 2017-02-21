@@ -23,6 +23,12 @@ var FunctionOperator = function () {
       }
       return { claim: '', remainder: text };
     }
+  }, {
+    key: 'getNumberOfOperands',
+    value: function getNumberOfOperands(payload) {
+      assert.ok(payload.type === 'FunctionOperator');
+      return payload.numberOfOperands;
+    }
   }]);
 
   function FunctionOperator(payload, params) {

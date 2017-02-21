@@ -23,6 +23,11 @@ const DefaultConfig = {
   isLeftAssociative: true,
 };
 
+const TYPE_TO_OPERATOR_CTOR = {
+  BinaryOperator,
+  FunctionOperator,
+};
+
 export default class Parser {
 
   static parse(text) {
@@ -161,11 +166,16 @@ class OperatorProcessor {
     this._addOperator(literal);
   }
 
-  addBinaryPayload(payload, implicitMultiply = false) {
-    if (!implicitMultiply) {
-      this._typeAddedCurrentPass = 'BinaryOperator';
-      this._maybeImplicitMultiply();
-    }
+  addBinaryPayload(payload) {
+    this._typeAddedCurrentPass = 'BinaryOperator';
+    this._addBinaryPayloadSilently(payload);
+  }
+
+  /**
+   * Adds a binary payload without recording that the current pass added a
+   * binary payload. This is used for implicit multiplication.
+   */
+  _addBinaryPayloadSilently(payload) {
     const precedence = PrecedenceMap[payload.precedence];
     let lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
     while (
@@ -196,7 +206,7 @@ class OperatorProcessor {
     this._typeAddedCurrentPass = 'FunctionOperator';
     this._maybeImplicitMultiply();
     this._operatorPayloads.push(payload, 'StartOfFunction');
-    this._remainingFunctionOperands = _numberOfOperands(payload);
+    this._remainingFunctionOperands = getNumberOfOperands(payload);
   }
 
   addOpenParens() {
@@ -208,7 +218,7 @@ class OperatorProcessor {
   addCloseSymbol(commaOrCloseParens) {
     this._typeAddedCurrentPass = commaOrCloseParens;
     this._maybeImplicitMultiply();
-    const isComma = commaOrCloseParens === ',';
+    const isComma = (commaOrCloseParens === ',');
     if (isComma) {
       this._remainingFunctionOperands -= 1;
     }
@@ -219,7 +229,7 @@ class OperatorProcessor {
       operatorPayload !== '(' &&
       operatorPayload !== 'StartOfFunction'
     ) {
-      const numberOfOperands = _numberOfOperands(operatorPayload);
+      const numberOfOperands = getNumberOfOperands(operatorPayload);
       const operands =
         this._operators.splice(-numberOfOperands, numberOfOperands);
       const operatorName = operatorPayload.name;
@@ -244,7 +254,7 @@ class OperatorProcessor {
 
       // StartOfFunction is always preceded by its FunctionOperator
       const functionPayload = this._operatorPayloads.pop();
-      const numberOfFunctionOperands = _numberOfOperands(functionPayload);
+      const numberOfFunctionOperands = getNumberOfOperands(functionPayload);
       assert.equal(functionPayload.type, 'FunctionOperator');
       const operands = this._operators.splice(
         -numberOfFunctionOperands,
@@ -275,17 +285,15 @@ class OperatorProcessor {
         payload !== '(' && payload !== 'StartOfFunction',
         'Invalid equation',
       );
-      const numberOfOperands = _numberOfOperands(payload);
+      const numberOfOperands = getNumberOfOperands(payload);
       const operands = this._operators.splice(
         -numberOfOperands,
         numberOfOperands,
       );
       assert.equal(operands.length, numberOfOperands);
-      this._operators.push(
-        payload.type === 'BinaryOperator'
-          ? new BinaryOperator(payload, operands)
-          : new FunctionOperator(payload, operands),
-      );
+      const OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
+      assert.ok(OperatorCtor, 'Unrecognized payload', payload.type);
+      this._operators.push(new OperatorCtor(payload, operands));
     }
     assert(this._operators.length === 1, 'Invalid equation');
     return this._operators[0].toJSON();
@@ -309,7 +317,7 @@ class OperatorProcessor {
       leftTypes.indexOf(this._typeAddedLastPass) >= 0 &&
       rightTypes.indexOf(this._typeAddedCurrentPass) >= 0
     ) {
-      this.addBinaryPayload(CoreOperators.Binary.prod, true);
+      this._addBinaryPayloadSilently(CoreOperators.Binary.prod);
     }
   }
 
@@ -320,6 +328,6 @@ class OperatorProcessor {
 
 }
 
-function _numberOfOperands(payload) {
+function getNumberOfOperands(payload) {
   return payload.type === 'BinaryOperator' ? 2 : payload.numberOfOperands;
 }
