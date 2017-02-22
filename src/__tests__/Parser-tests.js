@@ -1,9 +1,11 @@
 
 import Parser from '../Parser';
 
-function Literal(value) { return {type: 'Literal', name: 'Literal', value}; }
+function Literal(value) { return { type: 'Literal', name: 'Literal', value }; }
 
-function Symbol(symbol) { return {type: 'Symbol', name: 'Symbol', symbol}; }
+function Variable(variable) {
+  return { type: 'Variable', name: 'Variable', variable };
+}
 
 describe('Parser', () => {
 
@@ -143,15 +145,15 @@ describe('Parser', () => {
 
   });
 
-  it('parses symbols', () => {
+  it('parses variables', () => {
 
-    expect(Parser.parse('x')).toEqual(Symbol('x'));
+    expect(Parser.parse('x')).toEqual(Variable('x'));
 
     expect(Parser.parse('1 + x')).toEqual({
       type: 'BinaryOperator',
       name: 'Sum',
       left: Literal(1),
-      right: Symbol('x'),
+      right: Variable('x'),
     });
 
   });
@@ -237,8 +239,8 @@ describe('Parser', () => {
   });
 
 
-  it('configures to only allow certain symbols', () => {
-    const parser = new Parser({validSymbols: ['x', 'y']});
+  it('configures to only allow certain variables', () => {
+    const parser = new Parser({validVariables: ['x', 'y']});
     expect(() => parser.parse('tan(x + y)')).not.toThrow();
     expect(() => parser.parse('tan(x + z)')).toThrow();
   });
@@ -246,29 +248,29 @@ describe('Parser', () => {
 
   describe('implicit multiply', () => {
 
-    it('works between symbol and literal', () => {
+    it('works between variable and literal', () => {
 
       expect(Parser.parse('3x')).toEqual({
         type: 'BinaryOperator',
         name: 'Product',
         left: Literal(3),
-        right: Symbol('x'),
+        right: Variable('x'),
       });
       expect(Parser.parse('x3')).toEqual({
         type: 'BinaryOperator',
         name: 'Product',
-        left: Symbol('x'),
+        left: Variable('x'),
         right: Literal(3),
       });
     });
 
-    it('works between symbol and symbol', () => {
+    it('works between variable and variable', () => {
 
       expect(Parser.parse('xy')).toEqual({
         type: 'BinaryOperator',
         name: 'Product',
-        left: Symbol('x'),
-        right: Symbol('y'),
+        left: Variable('x'),
+        right: Variable('y'),
       });
 
     });
@@ -281,13 +283,13 @@ describe('Parser', () => {
         left: {
           type: 'BinaryOperator',
           name: 'Exponent',
-          left: Symbol('x'),
+          left: Variable('x'),
           right: Literal(2),
         },
         right: {
           type: 'BinaryOperator',
           name: 'Exponent',
-          left: Symbol('y'),
+          left: Variable('y'),
           right: Literal(2),
         },
       });
@@ -324,11 +326,11 @@ describe('Parser', () => {
       expect(Parser.parse('xsin(y)')).toEqual({
         type: 'BinaryOperator',
         name: 'Product',
-        left: Symbol('x'),
+        left: Variable('x'),
         right: {
           type: 'FunctionOperator',
           name: 'Sine',
-          params: [Symbol('y')],
+          params: [Variable('y')],
         },
       });
 

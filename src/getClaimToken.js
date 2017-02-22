@@ -13,12 +13,12 @@ export default function getClaimToken(payload, text) {
       return { claim: match[0], remainder: text.slice(match[0].length) };
     }
 
-    case 'Symbol': {
+    case 'Variable': {
       if (!(/^[a-zA-Z]/.test(text))) {
         return { claim: '', remainder: text };
       }
-      const { validSymbols } = payload;
-      if (validSymbols && validSymbols.indexOf(text.charAt(0)) < 0) {
+      const { validVariables } = payload;
+      if (validVariables && validVariables.indexOf(text.charAt(0)) < 0) {
         return { claim: '', remainder: text };
       }
       return { claim: text.charAt(0), remainder: text.slice(1) };

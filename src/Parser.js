@@ -3,7 +3,7 @@ import BinaryOperator from './Operators/BinaryOperator';
 import CoreOperators from './Operators/CoreOperators';
 import FunctionOperator from './Operators/FunctionOperator';
 import LiteralOperator from './Operators/LiteralOperator';
-import SymbolOperator from './Operators/SymbolOperator';
+import VariableOperator from './Operators/VariableOperator';
 
 import assert from 'assert';
 import getClaimToken from './getClaimToken';
@@ -17,8 +17,9 @@ const PrecedenceMap = {
 };
 
 const DefaultConfig = {
-  // An array of symbols that are valid. If this is null, all symbols are valid.
-  validSymbols: null,
+  // An array of variables that are valid. If this is null, all variables
+  // are valid.
+  validVariables: null,
   // Whether or not to allow implicit multiplication
   implicitMultiply: true,
   // The associativity of operations with the same precedence.
@@ -57,9 +58,9 @@ export default class Parser {
 
   parse(text) {
     const LiteralPayload = { type: 'Literal' };
-    const SymbolPayload = {
-      type: 'Symbol',
-      validSymbols: this._config.validSymbols,
+    const VariablePayload = {
+      type: 'Variable',
+      validVariables: this._config.validVariables,
     };
 
     let textToProcess = text.replace(/\s+/g, '');
@@ -90,8 +91,8 @@ export default class Parser {
 
       // Check if this is a end parenthesis or comma
       if (textToProcess.charAt(0) === ')' || textToProcess.charAt(0) === ',') {
-        const closeSymbol = textToProcess.charAt(0);
-        processor.addCloseSymbol(closeSymbol);
+        const closeVariable = textToProcess.charAt(0);
+        processor.addCloseVariable(closeVariable);
         textToProcess = textToProcess.slice(1);
         continue;
       }
@@ -126,12 +127,12 @@ export default class Parser {
       }
       if (isFunctionOperator) { continue; }
 
-      // Check if this is a symbol.
-      const symbolClaimToken = getClaimToken(SymbolPayload, textToProcess);
-      if (symbolClaimToken.claim.length > 0) {
-        const symbol = new SymbolOperator(symbolClaimToken.claim);
-        textToProcess = symbolClaimToken.remainder;
-        processor.addSymbol(symbol);
+      // Check if this is a variable.
+      const variableClaimToken = getClaimToken(VariablePayload, textToProcess);
+      if (variableClaimToken.claim.length > 0) {
+        const variable = new VariableOperator(variableClaimToken.claim);
+        textToProcess = variableClaimToken.remainder;
+        processor.addVariable(variable);
         continue;
       }
 
@@ -156,10 +157,10 @@ class OperatorProcessor {
     this._config = config;
   }
 
-  addSymbol(symbol) {
-    this._typeAddedCurrentPass = 'Symbol';
+  addVariable(variable) {
+    this._typeAddedCurrentPass = 'Variable';
     this._maybeImplicitMultiply();
-    this._addOperator(symbol);
+    this._addOperator(variable);
   }
 
   addLiteral(literal) {
@@ -217,7 +218,7 @@ class OperatorProcessor {
     this._operatorPayloads.push('(');
   }
 
-  addCloseSymbol(commaOrCloseParens) {
+  addCloseVariable(commaOrCloseParens) {
     this._typeAddedCurrentPass = commaOrCloseParens;
     this._maybeImplicitMultiply();
     const isComma = (commaOrCloseParens === ',');
@@ -306,13 +307,13 @@ class OperatorProcessor {
     const leftTypes = [
       ')',
       'Literal',
-      'Symbol',
+      'Variable',
     ];
     const rightTypes = [
       'FunctionOperator',
       '(',
       'Literal',
-      'Symbol',
+      'Variable',
     ];
     if (
       this._config.implicitMultiply &&
