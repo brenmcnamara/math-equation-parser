@@ -1,11 +1,8 @@
 
-import BinaryOperator from './Operators/BinaryOperator';
-import CoreOperators from './Operators/CoreOperators';
-import FunctionOperator from './Operators/FunctionOperator';
-import LiteralOperator from './Operators/LiteralOperator';
-import VariableOperator from './Operators/VariableOperator';
+import CoreOperators from './CoreOperators';
 
 import assert from 'assert';
+import createOperator from './createOperator';
 import getClaimToken from './getClaimToken';
 import getNumberOfParams from './getNumberOfParams';
 
@@ -24,11 +21,6 @@ const DefaultConfig = {
   implicitMultiply: true,
   // The associativity of operations with the same precedence.
   isLeftAssociative: true,
-};
-
-const TYPE_TO_OPERATOR_CTOR = {
-  BinaryOperator,
-  FunctionOperator,
 };
 
 export default class Parser {
@@ -75,7 +67,7 @@ export default class Parser {
       const literalClaimToken = getClaimToken(LiteralPayload, textToProcess);
       if (literalClaimToken.claim.length > 0) {
         const value = parseFloat(literalClaimToken.claim, 10);
-        const literal = new LiteralOperator(value);
+        const literal = createOperator(LiteralPayload, [value]);
         processor.addLiteral(literal);
         textToProcess = literalClaimToken.remainder;
         continue;
@@ -130,9 +122,10 @@ export default class Parser {
       // Check if this is a variable.
       const variableClaimToken = getClaimToken(VariablePayload, textToProcess);
       if (variableClaimToken.claim.length > 0) {
-        const variable = new VariableOperator(variableClaimToken.claim);
-        textToProcess = variableClaimToken.remainder;
+        const rawVariable = variableClaimToken.claim;
+        const variable = createOperator(VariablePayload, [rawVariable]);
         processor.addVariable(variable);
+        textToProcess = variableClaimToken.remainder;
         continue;
       }
 
@@ -197,8 +190,8 @@ class OperatorProcessor {
     ) {
       assert(this._operators.length >= 2, 'Invalid equation');
       this._operatorPayloads.pop();
-      const operands = this._operators.splice(-2, 2);
-      const operator = new BinaryOperator(lastPayload, operands);
+      const params = this._operators.splice(-2, 2);
+      const operator = createOperator(lastPayload, params);
       this._operators.push(operator);
       lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
     }
@@ -233,18 +226,13 @@ class OperatorProcessor {
       operatorPayload !== 'StartOfFunction'
     ) {
       const numberOfParams = getNumberOfParams(operatorPayload);
-      const operands =
-        this._operators.splice(-numberOfParams, numberOfParams);
+      const params = this._operators.splice(-numberOfParams, numberOfParams);
       const operatorName = operatorPayload.name;
       assert(
-        operands.length === numberOfParams,
-        `Operator ${operatorName} needs ${numberOfParams} operands`,
+        params.length === numberOfParams,
+        `Operator ${operatorName} needs ${numberOfParams} params`,
       );
-      this._operators.push(
-        operatorPayload.type === 'BinaryOperator'
-          ? new BinaryOperator(operatorPayload, operands)
-          : new FunctionOperator(operatorPayload, operands),
-      );
+      this._operators.push(createOperator(operatorPayload, params));
       this._addedOperatorCurrentPass = true;
       operatorPayload = this._operatorPayloads.pop();
     }
@@ -257,17 +245,17 @@ class OperatorProcessor {
 
       // StartOfFunction is always preceded by its FunctionOperator
       const functionPayload = this._operatorPayloads.pop();
-      const numberOfFunctionOperands = getNumberOfParams(functionPayload);
+      const numberOfFunctionParams = getNumberOfParams(functionPayload);
       assert.equal(functionPayload.type, 'FunctionOperator');
-      const operands = this._operators.splice(
-        -numberOfFunctionOperands,
-        numberOfFunctionOperands,
+      const params = this._operators.splice(
+        -numberOfFunctionParams,
+        numberOfFunctionParams,
       );
       assert(
-        operands.length === numberOfFunctionOperands,
+        params.length === numberOfFunctionParams,
         'Corrupt state: Not enough elements in resolvedOperators',
       );
-      this._operators.push(new FunctionOperator(functionPayload, operands));
+      this._operators.push(createOperator(functionPayload, params));
     }
   }
 
@@ -289,17 +277,12 @@ class OperatorProcessor {
         'Invalid equation',
       );
       const numberOfParams = getNumberOfParams(payload);
-      const operands = this._operators.splice(
-        -numberOfParams,
-        numberOfParams,
-      );
-      assert.equal(operands.length, numberOfParams);
-      const OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
-      assert.ok(OperatorCtor, 'Unrecognized payload', payload.type);
-      this._operators.push(new OperatorCtor(payload, operands));
+      const params = this._operators.splice(-numberOfParams, numberOfParams);
+      assert.equal(params.length, numberOfParams);
+      this._operators.push(createOperator(payload, params));
     }
     assert(this._operators.length === 1, 'Invalid equation');
-    return this._operators[0].toJSON();
+    return this._operators[0];
   }
 
   _maybeImplicitMultiply() {
