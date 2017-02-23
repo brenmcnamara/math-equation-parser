@@ -27,6 +27,17 @@ export default function createOperator(payload, params) {
         variable: params[0],
       };
 
+    case 'UnaryOperator':
+      assert.ok(
+        params.length === 1,
+        'Unary Operator should have exactly 1 parameter',
+      );
+      return {
+        type: 'UnaryOperator',
+        name: payload.name,
+        param: params[0],
+      };
+
     case 'BinaryOperator':
       assert.ok(
         params.length === 2,

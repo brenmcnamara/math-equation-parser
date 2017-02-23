@@ -24,20 +24,28 @@ export default function getClaimToken(payload, text) {
       return { claim: text.charAt(0), remainder: text.slice(1) };
     }
 
+    case 'UnaryOperator': {
+      const { symbol } = payload;
+      if (text.startsWith(symbol)) {
+        return { claim: symbol, remainder: text.slice(symbol.length) };
+      }
+      return { claim: '', remainder: text };
+    }
+
     case 'BinaryOperator': {
       const { symbol } = payload;
       if (text.startsWith(symbol)) {
-        return {claim: symbol, remainder: text.slice(symbol.length)};
+        return { claim: symbol, remainder: text.slice(symbol.length) };
       }
-      return {claim: '', remainder: text};
+      return { claim: '', remainder: text };
     }
 
     case 'FunctionOperator': {
       const { symbol } = payload;
       if (text.startsWith(symbol)) {
-        return {claim: symbol, remainder: text.slice(symbol.length)};
+        return { claim: symbol, remainder: text.slice(symbol.length) };
       }
-      return {claim: '', remainder: text};
+      return { claim: '', remainder: text };
     }
 
     default:

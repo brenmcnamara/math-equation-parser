@@ -32,19 +32,25 @@ export default class Parser {
 
   constructor(config = DefaultConfig) {
     this._binaryPayloads = Object.values(CoreOperators.Binary);
+    this._unaryPayloads = Object.values(CoreOperators.Unary);
     this._functionPayloads = Object.values(CoreOperators.Function);
     this._config = Object.assign({}, DefaultConfig, config);
   }
 
-  addBinaryOperator(payload) {
-    assert.equal(payload.type, 'BinaryOperator');
-    this._binaryPayloads.push(payload);
-    return this;
-  }
-
-  addFunctionOperator(payload) {
-    assert.equal(payload.type, 'FunctionOperator');
-    this._functionPayloads.push(payload);
+  addOperatorPayload(payload) {
+    switch (payload.type) {
+      case 'FunctionOperator':
+        this._functionPayloads.push(payload);
+        break;
+      case 'BinaryOperator':
+        this._binaryPayloads.push(payload);
+        break;
+      case 'UnaryOperator':
+        this._unaryPayloads.push(payload);
+        break;
+      default:
+        throw Error(`Unrecognized operator payload ${payload.type}`);
+    }
     return this;
   }
 
@@ -89,13 +95,26 @@ export default class Parser {
         continue;
       }
 
+      // Check if this is a unary operator.
+      let isUnaryOperator = false;
+      for (let payload of this._unaryPayloads) {
+        const claimToken = getClaimToken(payload, textToProcess);
+        if (claimToken.claim.length > 0) {
+          isUnaryOperator = true;
+          processor.addPayload(payload);
+          textToProcess = claimToken.remainder;
+          break;
+        }
+      }
+      if (isUnaryOperator) { continue; }
+
       // Check if this is a binary operator.
       let isBinaryOperator = false;
       for (let payload of this._binaryPayloads) {
         const claimToken = getClaimToken(payload, textToProcess);
         if (claimToken.claim.length > 0) {
           isBinaryOperator = true;
-          processor.addBinaryPayload(payload);
+          processor.addPayload(payload);
           textToProcess = claimToken.remainder;
           break;
         }
@@ -108,7 +127,7 @@ export default class Parser {
         const claimToken = getClaimToken(payload, textToProcess);
         if (claimToken.claim.length > 0) {
           isFunctionOperator = true;
-          processor.addFunctionPayload(payload);
+          processor.addPayload(payload);
           assert(
             claimToken.remainder.charAt(0) === '(', // Paren after function
             'Invalid Equation',
@@ -162,17 +181,35 @@ class OperatorProcessor {
     this._addOperator(literal);
   }
 
-  addBinaryPayload(payload) {
-    this._typeAddedCurrentPass = 'BinaryOperator';
-    this._addBinaryPayloadSilently(payload);
+  addPayload(payload) {
+    switch (payload.type) {
+      case 'UnaryOperator':
+        return this._addUnaryPayload(payload);
+      case 'BinaryOperator':
+        return this._addBinaryPayload(payload, false);
+      case 'FunctionOperator':
+        return this._addFunctionPayload(payload);
+      default:
+        throw Error(`Unrecognized operator payload ${payload.type}`);
+    }
+  }
+
+  _addUnaryPayload(payload) {
+    this._typeAddedCurrentPass = 'UnaryOperator';
+    this._maybeImplicitMultiply();
+    this._operatorPayloads.push(payload);
   }
 
   /**
-   * Adds a binary payload without recording that the current pass added a
-   * binary payload. This is used for implicit multiplication.
+   * Adds a binary payload and optionally add it silently. A payload added
+   * silently will not record the current pass as adding a binary operator.
+   * This is used to process implicit multiplication correctly.
    */
-  _addBinaryPayloadSilently(payload) {
-    const precedence = PrecedenceMap[payload.precedence];
+  _addBinaryPayload(payload, isSilent) {
+    if (!isSilent) {
+      this._typeAddedCurrentPass = 'BinaryOperator';
+    }
+    const precedenceValue = getPrecedenceValue(payload);
     let lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
     while (
       lastPayload &&
@@ -182,15 +219,15 @@ class OperatorProcessor {
         // Left Associative
         (
           this._config.isLeftAssociative &&
-          PrecedenceMap[lastPayload.precedence] >= precedence
+          getPrecedenceValue(lastPayload) >= precedenceValue
         ) ||
         // Right Associative
-        (PrecedenceMap[lastPayload.precedence] > precedence)
+        getPrecedenceValue(lastPayload) > precedenceValue
       )
     ) {
-      assert(this._operators.length >= 2, 'Invalid equation');
       this._operatorPayloads.pop();
-      const params = this._operators.splice(-2, 2);
+      const numberOfParams = getNumberOfParams(lastPayload);
+      const params = this._operators.splice(-numberOfParams, numberOfParams);
       const operator = createOperator(lastPayload, params);
       this._operators.push(operator);
       lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
@@ -198,7 +235,7 @@ class OperatorProcessor {
     this._operatorPayloads.push(payload);
   }
 
-  addFunctionPayload(payload) {
+  _addFunctionPayload(payload) {
     this._typeAddedCurrentPass = 'FunctionOperator';
     this._maybeImplicitMultiply();
     this._operatorPayloads.push(payload, 'StartOfFunction');
@@ -293,6 +330,7 @@ class OperatorProcessor {
       'Variable',
     ];
     const rightTypes = [
+      'UnaryOperator',
       'FunctionOperator',
       '(',
       'Literal',
@@ -303,7 +341,7 @@ class OperatorProcessor {
       leftTypes.indexOf(this._typeAddedLastPass) >= 0 &&
       rightTypes.indexOf(this._typeAddedCurrentPass) >= 0
     ) {
-      this._addBinaryPayloadSilently(CoreOperators.Binary.prod);
+      this._addBinaryPayload(CoreOperators.Binary.prod, true);
     }
   }
 
@@ -312,4 +350,22 @@ class OperatorProcessor {
     this._addedOperatorCurrentPass = true;
   }
 
+}
+
+/**
+ * Get the precedence value of the operator payload.
+ *
+ * NOTE: Do not handle function payloads here because functions get processed
+ * immediately after the closing parenthesis, so they will never be compared
+ * to other operators.
+ */
+function getPrecedenceValue(payload) {
+  switch (payload.type) {
+    case 'BinaryOperator':
+      return PrecedenceMap[payload.precedence];
+    case 'UnaryOperator':
+      return Infinity;
+    default:
+      throw Error(`getPrecedenceValue has unknown payload ${payload.type}`);
+  }
 }

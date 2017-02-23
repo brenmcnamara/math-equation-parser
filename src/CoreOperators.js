@@ -1,6 +1,10 @@
 
 export default {
 
+  Unary: {
+
+  },
+
   Binary: {
     sum: {
       type: 'BinaryOperator',
