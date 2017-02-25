@@ -6,6 +6,12 @@ import createOperator from './createOperator';
 import getClaimToken from './getClaimToken';
 import getNumberOfParams from './getNumberOfParams';
 
+const UnaryMinusPayload = {
+  type: 'UnaryOperator',
+  name: 'Minus',
+  symbol: '-',
+};
+
 const PrecedenceMap = {
   LOW: 1,
   NORMAL: 2,
@@ -108,6 +114,15 @@ export default class Parser {
       }
       if (isUnaryOperator) { continue; }
 
+      // Check for the unary minus operator.
+      const unaryMinusClaimToken =
+        getClaimToken(UnaryMinusPayload, textToProcess);
+      if (unaryMinusClaimToken.claim.length > 0 && processor.isUnaryMinus()) {
+        processor.addPayload(UnaryMinusPayload);
+        textToProcess = unaryMinusClaimToken.remainder;
+        continue;
+      }
+
       // Check if this is a binary operator.
       let isBinaryOperator = false;
       for (let payload of this._binaryPayloads) {
@@ -192,6 +207,13 @@ class OperatorProcessor {
       default:
         throw Error(`Unrecognized operator payload ${payload.type}`);
     }
+  }
+
+  isUnaryMinus() {
+    return (
+      this._typeAddedLastPass !== 'Literal' &&
+      this._typeAddedLastPass !== ')'
+    );
   }
 
   _addUnaryPayload(payload) {

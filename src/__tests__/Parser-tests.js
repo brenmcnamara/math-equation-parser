@@ -488,4 +488,62 @@ describe('Parser', () => {
 
   });
 
+  it('parses the unary minus operator', () => {
+    expect(Parser.parse('-3')).toEqual({
+      type: 'UnaryOperator',
+      name: 'Minus',
+      param: Literal(3),
+    });
+  });
+
+  it('parses the unary minus operator with parenthesis', () => {
+    expect(Parser.parse('(-3)')).toEqual({
+      type: 'UnaryOperator',
+      name: 'Minus',
+      param: Literal(3),
+    });
+    expect(Parser.parse('-(4)')).toEqual({
+      type: 'UnaryOperator',
+      name: 'Minus',
+      param: Literal(4),
+    });
+  });
+
+  it('parses the unary minus operator adjacent to binary operators', () => {
+    expect(Parser.parse('4 - -3')).toEqual({
+      type: 'BinaryOperator',
+      name: 'Difference',
+      left: Literal(4),
+      right: {
+        type: 'UnaryOperator',
+        name: 'Minus',
+        param: Literal(3),
+      },
+    });
+  });
+
+  it('parses consecutive unary minus operators', () => {
+    expect(Parser.parse('--12')).toEqual({
+      type: 'UnaryOperator',
+      name: 'Minus',
+      param: {
+        type: 'UnaryOperator',
+        name: 'Minus',
+        param: Literal(12),
+      },
+    });
+  });
+
+  it('parses the unary minus operator acting on a function operator', () => {
+    expect(Parser.parse('-sin(3.14)')).toEqual({
+      type: 'UnaryOperator',
+      name: 'Minus',
+      param: {
+        type: 'FunctionOperator',
+        name: 'Sine',
+        params: [Literal(3.14)],
+      },
+    });
+  });
+
 });
