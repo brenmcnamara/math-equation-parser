@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = {
 
+  Unary: {},
+
   Binary: {
     sum: {
       type: 'BinaryOperator',

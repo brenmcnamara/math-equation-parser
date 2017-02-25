@@ -20,20 +20,20 @@ function getClaimToken(payload, text) {
         return { claim: match[0], remainder: text.slice(match[0].length) };
       }
 
-    case 'Symbol':
+    case 'Variable':
       {
         if (!/^[a-zA-Z]/.test(text)) {
           return { claim: '', remainder: text };
         }
-        var validSymbols = payload.validSymbols;
+        var validVariables = payload.validVariables;
 
-        if (validSymbols && validSymbols.indexOf(text.charAt(0)) < 0) {
+        if (validVariables && validVariables.indexOf(text.charAt(0)) < 0) {
           return { claim: '', remainder: text };
         }
         return { claim: text.charAt(0), remainder: text.slice(1) };
       }
 
-    case 'BinaryOperator':
+    case 'UnaryOperator':
       {
         var symbol = payload.symbol;
 
@@ -43,12 +43,22 @@ function getClaimToken(payload, text) {
         return { claim: '', remainder: text };
       }
 
-    case 'FunctionOperator':
+    case 'BinaryOperator':
       {
         var _symbol = payload.symbol;
 
         if (text.startsWith(_symbol)) {
           return { claim: _symbol, remainder: text.slice(_symbol.length) };
+        }
+        return { claim: '', remainder: text };
+      }
+
+    case 'FunctionOperator':
+      {
+        var _symbol2 = payload.symbol;
+
+        if (text.startsWith(_symbol2)) {
+          return { claim: _symbol2, remainder: text.slice(_symbol2.length) };
         }
         return { claim: '', remainder: text };
       }

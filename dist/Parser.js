@@ -6,29 +6,17 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _BinaryOperator = require('./Operators/BinaryOperator');
-
-var _BinaryOperator2 = _interopRequireDefault(_BinaryOperator);
-
-var _CoreOperators = require('./Operators/CoreOperators');
+var _CoreOperators = require('./CoreOperators');
 
 var _CoreOperators2 = _interopRequireDefault(_CoreOperators);
-
-var _FunctionOperator = require('./Operators/FunctionOperator');
-
-var _FunctionOperator2 = _interopRequireDefault(_FunctionOperator);
-
-var _LiteralOperator = require('./Operators/LiteralOperator');
-
-var _LiteralOperator2 = _interopRequireDefault(_LiteralOperator);
-
-var _SymbolOperator = require('./Operators/SymbolOperator');
-
-var _SymbolOperator2 = _interopRequireDefault(_SymbolOperator);
 
 var _assert = require('assert');
 
 var _assert2 = _interopRequireDefault(_assert);
+
+var _createOperator = require('./createOperator');
+
+var _createOperator2 = _interopRequireDefault(_createOperator);
 
 var _getClaimToken = require('./getClaimToken');
 
@@ -42,6 +30,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var UnaryMinusPayload = {
+  type: 'UnaryOperator',
+  name: 'Minus',
+  symbol: '-'
+};
+
 var PrecedenceMap = {
   LOW: 1,
   NORMAL: 2,
@@ -50,17 +44,13 @@ var PrecedenceMap = {
 };
 
 var DefaultConfig = {
-  // An array of symbols that are valid. If this is null, all symbols are valid.
-  validSymbols: null,
+  // An array of variables that are valid. If this is null, all variables
+  // are valid.
+  validVariables: null,
   // Whether or not to allow implicit multiplication
   implicitMultiply: true,
   // The associativity of operations with the same precedence.
   isLeftAssociative: true
-};
-
-var TYPE_TO_OPERATOR_CTOR = {
-  BinaryOperator: _BinaryOperator2.default,
-  FunctionOperator: _FunctionOperator2.default
 };
 
 var Parser = function () {
@@ -78,31 +68,36 @@ var Parser = function () {
     _classCallCheck(this, Parser);
 
     this._binaryPayloads = Object.values(_CoreOperators2.default.Binary);
+    this._unaryPayloads = Object.values(_CoreOperators2.default.Unary);
     this._functionPayloads = Object.values(_CoreOperators2.default.Function);
     this._config = Object.assign({}, DefaultConfig, config);
   }
 
   _createClass(Parser, [{
-    key: 'addBinaryOperator',
-    value: function addBinaryOperator(payload) {
-      _assert2.default.equal(payload.type, 'BinaryOperator');
-      this._binaryPayloads.push(payload);
-      return this;
-    }
-  }, {
-    key: 'addFunctionOperator',
-    value: function addFunctionOperator(payload) {
-      _assert2.default.equal(payload.type, 'FunctionOperator');
-      this._functionPayloads.push(payload);
+    key: 'addOperatorPayload',
+    value: function addOperatorPayload(payload) {
+      switch (payload.type) {
+        case 'FunctionOperator':
+          this._functionPayloads.push(payload);
+          break;
+        case 'BinaryOperator':
+          this._binaryPayloads.push(payload);
+          break;
+        case 'UnaryOperator':
+          this._unaryPayloads.push(payload);
+          break;
+        default:
+          throw Error('Unrecognized operator payload ' + payload.type);
+      }
       return this;
     }
   }, {
     key: 'parse',
     value: function parse(text) {
       var LiteralPayload = { type: 'Literal' };
-      var SymbolPayload = {
-        type: 'Symbol',
-        validSymbols: this._config.validSymbols
+      var VariablePayload = {
+        type: 'Variable',
+        validVariables: this._config.validVariables
       };
 
       var textToProcess = text.replace(/\s+/g, '');
@@ -117,7 +112,7 @@ var Parser = function () {
         var literalClaimToken = (0, _getClaimToken2.default)(LiteralPayload, textToProcess);
         if (literalClaimToken.claim.length > 0) {
           var value = parseFloat(literalClaimToken.claim, 10);
-          var literal = new _LiteralOperator2.default(value);
+          var literal = (0, _createOperator2.default)(LiteralPayload, [value]);
           processor.addLiteral(literal);
           textToProcess = literalClaimToken.remainder;
           continue;
@@ -132,26 +127,26 @@ var Parser = function () {
 
         // Check if this is a end parenthesis or comma
         if (textToProcess.charAt(0) === ')' || textToProcess.charAt(0) === ',') {
-          var closeSymbol = textToProcess.charAt(0);
-          processor.addCloseSymbol(closeSymbol);
+          var closeVariable = textToProcess.charAt(0);
+          processor.addCloseVariable(closeVariable);
           textToProcess = textToProcess.slice(1);
           continue;
         }
 
-        // Check if this is a binary operator.
-        var isBinaryOperator = false;
+        // Check if this is a unary operator.
+        var isUnaryOperator = false;
         var _iteratorNormalCompletion = true;
         var _didIteratorError = false;
         var _iteratorError = undefined;
 
         try {
-          for (var _iterator = this._binaryPayloads[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          for (var _iterator = this._unaryPayloads[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
             var payload = _step.value;
 
             var claimToken = (0, _getClaimToken2.default)(payload, textToProcess);
             if (claimToken.claim.length > 0) {
-              isBinaryOperator = true;
-              processor.addBinaryPayload(payload);
+              isUnaryOperator = true;
+              processor.addPayload(payload);
               textToProcess = claimToken.remainder;
               break;
             }
@@ -171,27 +166,33 @@ var Parser = function () {
           }
         }
 
-        if (isBinaryOperator) {
+        if (isUnaryOperator) {
           continue;
         }
 
-        // Check if this is a function operator
-        var isFunctionOperator = false;
+        // Check for the unary minus operator.
+        var unaryMinusClaimToken = (0, _getClaimToken2.default)(UnaryMinusPayload, textToProcess);
+        if (unaryMinusClaimToken.claim.length > 0 && processor.isUnaryMinus()) {
+          processor.addPayload(UnaryMinusPayload);
+          textToProcess = unaryMinusClaimToken.remainder;
+          continue;
+        }
+
+        // Check if this is a binary operator.
+        var isBinaryOperator = false;
         var _iteratorNormalCompletion2 = true;
         var _didIteratorError2 = false;
         var _iteratorError2 = undefined;
 
         try {
-          for (var _iterator2 = this._functionPayloads[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+          for (var _iterator2 = this._binaryPayloads[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
             var _payload = _step2.value;
 
             var _claimToken = (0, _getClaimToken2.default)(_payload, textToProcess);
             if (_claimToken.claim.length > 0) {
-              isFunctionOperator = true;
-              processor.addFunctionPayload(_payload);
-              (0, _assert2.default)(_claimToken.remainder.charAt(0) === '(', // Paren after function
-              'Invalid Equation');
-              textToProcess = _claimToken.remainder.slice(1);
+              isBinaryOperator = true;
+              processor.addPayload(_payload);
+              textToProcess = _claimToken.remainder;
               break;
             }
           }
@@ -210,16 +211,56 @@ var Parser = function () {
           }
         }
 
+        if (isBinaryOperator) {
+          continue;
+        }
+
+        // Check if this is a function operator
+        var isFunctionOperator = false;
+        var _iteratorNormalCompletion3 = true;
+        var _didIteratorError3 = false;
+        var _iteratorError3 = undefined;
+
+        try {
+          for (var _iterator3 = this._functionPayloads[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+            var _payload2 = _step3.value;
+
+            var _claimToken2 = (0, _getClaimToken2.default)(_payload2, textToProcess);
+            if (_claimToken2.claim.length > 0) {
+              isFunctionOperator = true;
+              processor.addPayload(_payload2);
+              (0, _assert2.default)(_claimToken2.remainder.charAt(0) === '(', // Paren after function
+              'Invalid Equation');
+              textToProcess = _claimToken2.remainder.slice(1);
+              break;
+            }
+          }
+        } catch (err) {
+          _didIteratorError3 = true;
+          _iteratorError3 = err;
+        } finally {
+          try {
+            if (!_iteratorNormalCompletion3 && _iterator3.return) {
+              _iterator3.return();
+            }
+          } finally {
+            if (_didIteratorError3) {
+              throw _iteratorError3;
+            }
+          }
+        }
+
         if (isFunctionOperator) {
           continue;
         }
 
-        // Check if this is a symbol.
-        var symbolClaimToken = (0, _getClaimToken2.default)(SymbolPayload, textToProcess);
-        if (symbolClaimToken.claim.length > 0) {
-          var symbol = new _SymbolOperator2.default(symbolClaimToken.claim);
-          textToProcess = symbolClaimToken.remainder;
-          processor.addSymbol(symbol);
+        // Check if this is a variable.
+        var variableClaimToken = (0, _getClaimToken2.default)(VariablePayload, textToProcess);
+        if (variableClaimToken.claim.length > 0) {
+          var rawVariable = variableClaimToken.claim;
+          var variable = (0, _createOperator2.default)(VariablePayload, [rawVariable]);
+          processor.addVariable(variable);
+          textToProcess = variableClaimToken.remainder;
           continue;
         }
 
@@ -251,11 +292,11 @@ var OperatorProcessor = function () {
   }
 
   _createClass(OperatorProcessor, [{
-    key: 'addSymbol',
-    value: function addSymbol(symbol) {
-      this._typeAddedCurrentPass = 'Symbol';
+    key: 'addVariable',
+    value: function addVariable(variable) {
+      this._typeAddedCurrentPass = 'Variable';
       this._maybeImplicitMultiply();
-      this._addOperator(symbol);
+      this._addOperator(variable);
     }
   }, {
     key: 'addLiteral',
@@ -265,39 +306,63 @@ var OperatorProcessor = function () {
       this._addOperator(literal);
     }
   }, {
-    key: 'addBinaryPayload',
-    value: function addBinaryPayload(payload) {
-      this._typeAddedCurrentPass = 'BinaryOperator';
-      this._addBinaryPayloadSilently(payload);
+    key: 'addPayload',
+    value: function addPayload(payload) {
+      switch (payload.type) {
+        case 'UnaryOperator':
+          return this._addUnaryPayload(payload);
+        case 'BinaryOperator':
+          return this._addBinaryPayload(payload, false);
+        case 'FunctionOperator':
+          return this._addFunctionPayload(payload);
+        default:
+          throw Error('Unrecognized operator payload ' + payload.type);
+      }
+    }
+  }, {
+    key: 'isUnaryMinus',
+    value: function isUnaryMinus() {
+      return this._typeAddedLastPass !== 'Literal' && this._typeAddedLastPass !== ')';
+    }
+  }, {
+    key: '_addUnaryPayload',
+    value: function _addUnaryPayload(payload) {
+      this._typeAddedCurrentPass = 'UnaryOperator';
+      this._maybeImplicitMultiply();
+      this._operatorPayloads.push(payload);
     }
 
     /**
-     * Adds a binary payload without recording that the current pass added a
-     * binary payload. This is used for implicit multiplication.
+     * Adds a binary payload and optionally add it silently. A payload added
+     * silently will not record the current pass as adding a binary operator.
+     * This is used to process implicit multiplication correctly.
      */
 
   }, {
-    key: '_addBinaryPayloadSilently',
-    value: function _addBinaryPayloadSilently(payload) {
-      var precedence = PrecedenceMap[payload.precedence];
+    key: '_addBinaryPayload',
+    value: function _addBinaryPayload(payload, isSilent) {
+      if (!isSilent) {
+        this._typeAddedCurrentPass = 'BinaryOperator';
+      }
+      var precedenceValue = getPrecedenceValue(payload);
       var lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
       while (lastPayload && lastPayload !== '(' && lastPayload !== 'StartOfFunction' && (
       // Left Associative
-      this._config.isLeftAssociative && PrecedenceMap[lastPayload.precedence] >= precedence ||
+      this._config.isLeftAssociative && getPrecedenceValue(lastPayload) >= precedenceValue ||
       // Right Associative
-      PrecedenceMap[lastPayload.precedence] > precedence)) {
-        (0, _assert2.default)(this._operators.length >= 2, 'Invalid equation');
+      getPrecedenceValue(lastPayload) > precedenceValue)) {
         this._operatorPayloads.pop();
-        var operands = this._operators.splice(-2, 2);
-        var operator = new _BinaryOperator2.default(lastPayload, operands);
+        var numberOfParams = (0, _getNumberOfParams2.default)(lastPayload);
+        var params = this._operators.splice(-numberOfParams, numberOfParams);
+        var operator = (0, _createOperator2.default)(lastPayload, params);
         this._operators.push(operator);
         lastPayload = this._operatorPayloads[this._operatorPayloads.length - 1];
       }
       this._operatorPayloads.push(payload);
     }
   }, {
-    key: 'addFunctionPayload',
-    value: function addFunctionPayload(payload) {
+    key: '_addFunctionPayload',
+    value: function _addFunctionPayload(payload) {
       this._typeAddedCurrentPass = 'FunctionOperator';
       this._maybeImplicitMultiply();
       this._operatorPayloads.push(payload, 'StartOfFunction');
@@ -311,8 +376,8 @@ var OperatorProcessor = function () {
       this._operatorPayloads.push('(');
     }
   }, {
-    key: 'addCloseSymbol',
-    value: function addCloseSymbol(commaOrCloseParens) {
+    key: 'addCloseVariable',
+    value: function addCloseVariable(commaOrCloseParens) {
       this._typeAddedCurrentPass = commaOrCloseParens;
       this._maybeImplicitMultiply();
       var isComma = commaOrCloseParens === ',';
@@ -323,10 +388,10 @@ var OperatorProcessor = function () {
       var operatorPayload = this._operatorPayloads.pop();
       while (operatorPayload && operatorPayload !== '(' && operatorPayload !== 'StartOfFunction') {
         var numberOfParams = (0, _getNumberOfParams2.default)(operatorPayload);
-        var operands = this._operators.splice(-numberOfParams, numberOfParams);
+        var params = this._operators.splice(-numberOfParams, numberOfParams);
         var operatorName = operatorPayload.name;
-        (0, _assert2.default)(operands.length === numberOfParams, 'Operator ' + operatorName + ' needs ' + numberOfParams + ' operands');
-        this._operators.push(operatorPayload.type === 'BinaryOperator' ? new _BinaryOperator2.default(operatorPayload, operands) : new _FunctionOperator2.default(operatorPayload, operands));
+        (0, _assert2.default)(params.length === numberOfParams, 'Operator ' + operatorName + ' needs ' + numberOfParams + ' params');
+        this._operators.push((0, _createOperator2.default)(operatorPayload, params));
         this._addedOperatorCurrentPass = true;
         operatorPayload = this._operatorPayloads.pop();
       }
@@ -339,11 +404,11 @@ var OperatorProcessor = function () {
 
         // StartOfFunction is always preceded by its FunctionOperator
         var functionPayload = this._operatorPayloads.pop();
-        var numberOfFunctionOperands = (0, _getNumberOfParams2.default)(functionPayload);
+        var numberOfFunctionParams = (0, _getNumberOfParams2.default)(functionPayload);
         _assert2.default.equal(functionPayload.type, 'FunctionOperator');
-        var _operands = this._operators.splice(-numberOfFunctionOperands, numberOfFunctionOperands);
-        (0, _assert2.default)(_operands.length === numberOfFunctionOperands, 'Corrupt state: Not enough elements in resolvedOperators');
-        this._operators.push(new _FunctionOperator2.default(functionPayload, _operands));
+        var _params = this._operators.splice(-numberOfFunctionParams, numberOfFunctionParams);
+        (0, _assert2.default)(_params.length === numberOfFunctionParams, 'Corrupt state: Not enough elements in resolvedOperators');
+        this._operators.push((0, _createOperator2.default)(functionPayload, _params));
       }
     }
 
@@ -368,23 +433,21 @@ var OperatorProcessor = function () {
         var payload = this._operatorPayloads.pop();
         (0, _assert2.default)(payload !== '(' && payload !== 'StartOfFunction', 'Invalid equation');
         var numberOfParams = (0, _getNumberOfParams2.default)(payload);
-        var operands = this._operators.splice(-numberOfParams, numberOfParams);
-        _assert2.default.equal(operands.length, numberOfParams);
-        var OperatorCtor = TYPE_TO_OPERATOR_CTOR[payload.type];
-        _assert2.default.ok(OperatorCtor, 'Unrecognized payload', payload.type);
-        this._operators.push(new OperatorCtor(payload, operands));
+        var params = this._operators.splice(-numberOfParams, numberOfParams);
+        _assert2.default.equal(params.length, numberOfParams);
+        this._operators.push((0, _createOperator2.default)(payload, params));
       }
       (0, _assert2.default)(this._operators.length === 1, 'Invalid equation');
-      return this._operators[0].toJSON();
+      return this._operators[0];
     }
   }, {
     key: '_maybeImplicitMultiply',
     value: function _maybeImplicitMultiply() {
       // Check for implicit multiplication.
-      var leftTypes = [')', 'Literal', 'Symbol'];
-      var rightTypes = ['FunctionOperator', '(', 'Literal', 'Symbol'];
+      var leftTypes = [')', 'Literal', 'Variable'];
+      var rightTypes = ['UnaryOperator', 'FunctionOperator', '(', 'Literal', 'Variable'];
       if (this._config.implicitMultiply && leftTypes.indexOf(this._typeAddedLastPass) >= 0 && rightTypes.indexOf(this._typeAddedCurrentPass) >= 0) {
-        this._addBinaryPayloadSilently(_CoreOperators2.default.Binary.prod);
+        this._addBinaryPayload(_CoreOperators2.default.Binary.prod, true);
       }
     }
   }, {
@@ -397,3 +460,23 @@ var OperatorProcessor = function () {
 
   return OperatorProcessor;
 }();
+
+/**
+ * Get the precedence value of the operator payload.
+ *
+ * NOTE: Do not handle function payloads here because functions get processed
+ * immediately after the closing parenthesis, so they will never be compared
+ * to other operators.
+ */
+
+
+function getPrecedenceValue(payload) {
+  switch (payload.type) {
+    case 'BinaryOperator':
+      return PrecedenceMap[payload.precedence];
+    case 'UnaryOperator':
+      return Infinity;
+    default:
+      throw Error('getPrecedenceValue has unknown payload ' + payload.type);
+  }
+}
